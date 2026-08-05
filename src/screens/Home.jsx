@@ -103,13 +103,13 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
+      {/* 톱니바퀴 설정 버튼 */}
       <div className="absolute top-0 right-0 p-5 z-20">
         <Link to="/settings" className="text-gray-400 hover:text-brand transition block active:scale-95">
           <Settings size={24} />
         </Link>
       </div>
 
-      {/* 🌟 3. isLoading이 true일 때는 로딩 화면을, false일 때는 강아지를 보여줍니다! */}
       {isLoading ? (
         <div className="flex-1 flex flex-col items-center justify-center">
           <Loader2 className="animate-spin text-brand w-10 h-10 mb-4" />
@@ -117,27 +117,36 @@ export default function Home() {
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-5 relative">
+          
+          {/* 🌟 1. 드래그된 최종 위치를 고정하는 바깥쪽 상자 */}
           <div
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            className="touch-none relative cursor-grab active:cursor-grabbing z-10"
+            className="touch-none relative z-10"
             style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}
           >
-            <img
-              src={selectedDog.image}
-              alt={selectedDog.name}
-              draggable={false}
-              className="w-44 h-44 object-contain drop-shadow-xl animate-[bounce_3s_ease-in-out_infinite]"
-            />
+            {/* 🌟 2. 터치 인식 + 둥둥 떠다니는 애니메이션 합치기 */}
+            {/* rounded-full을 추가해 정사각형의 투명한 모서리 클릭을 방지합니다. */}
+            <div
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              className="cursor-grab active:cursor-grabbing animate-[bounce_3s_ease-in-out_infinite] rounded-full"
+            >
+              <img
+                src={selectedDog.image}
+                alt={selectedDog.name}
+                draggable={false}
+                // 애니메이션이 부모 div로 올라갔으므로 여기서는 빼줍니다!
+                className="w-44 h-44 object-contain drop-shadow-xl"
+              />
+            </div>
           </div>
+
         </div>
       )}
 
-      {/* 모달창 코드는 기존 유지 */}
+      {/* 모달창 코드는 기존과 완벽하게 동일합니다 */}
       {isModalOpen && (
-        // ... (이전 코드의 모달 부분 그대로 유지) ...
         <div className="absolute inset-0 bg-black/50 flex flex-col justify-end z-50">
           <div className="bg-white rounded-t-3xl p-6 min-h-[350px] w-full animate-[slideUp_0.3s_ease-out]">
             <div className="flex justify-between items-center mb-6">
@@ -165,4 +174,3 @@ export default function Home() {
       )}
     </div>
   );
-}

@@ -13,6 +13,6 @@ export const doggyData = [
   {
     id: 3,
     name: "파티 포메라니안2",
-    image: "/pomerainan-party2.webp" // 임시 이미지 (나중에 바꾸시면 됩니다!)
+    image: "/pomeranian-party2.webp" // 임시 이미지 (나중에 바꾸시면 됩니다!)
   }
 ];

@@ -6,6 +6,7 @@ import { auth } from './firebaseConfig';
 import LoginScreen from './screens/LoginScreen';
 import Home from './screens/Home';
 import Feed from './screens/Feed';
+import SettingsScreen from './screens/SettingsScreen';
 import BottomNav from './components/BottomNav';
 
 export default function App() {

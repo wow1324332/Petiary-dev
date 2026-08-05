@@ -1,14 +1,14 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
-    "./App.{js,jsx,ts,tsx}", 
-    "./src/**/*.{js,jsx,ts,tsx}"
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       colors: {
-        brand: '#FF7F50', // 따뜻한 코랄 포인트
-        bglight: '#FFF9F5', // 부드러운 배경색
+        brand: '#FF7F50',
+        bglight: '#FFF9F5',
       }
     },
   },

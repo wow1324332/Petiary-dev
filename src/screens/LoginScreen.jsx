@@ -23,19 +23,18 @@ export default function LoginScreen() {
     setIsStandalone(standalone);
   }, []);
 
-  // 🌟 설치 버튼을 눌렀을 때 실행되는 기능
+  // 설치 버튼 클릭 시 동작
   const handleInstallClick = async () => {
     if (isIOS) {
       alert("아이폰에서는 화면 하단의 ⬆️[공유] 버튼을 누른 후, ➕[홈 화면에 추가]를 선택해주세요!");
       return;
     }
     
-    // index.html에서 잡아둔 설치 신호를 꺼내서 씁니다.
     if (window.deferredPrompt) {
       window.deferredPrompt.prompt();
       const { outcome } = await window.deferredPrompt.userChoice;
       if (outcome === 'accepted') {
-        window.deferredPrompt = null; // 설치 성공하면 비워줌
+        window.deferredPrompt = null;
       }
     } else {
       alert("설치 조건을 확인중입니다. (이 메시지가 계속 뜨면 안드로이드 크롬의 '방문 기록(캐시)'을 한 번 지우고 새로고침 해주세요!)");
@@ -66,7 +65,10 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-bglight items-center justify-center relative shadow-xl">
+    <div 
+      className="flex flex-col h-screen max-w-md mx-auto bg-cover bg-center relative shadow-xl justify-end pb-12"
+      style={{ backgroundImage: "url('/Login-bg.jpg')" }} // 🌟 배경 이미지 적용
+    >
       
       {/* 우측 상단 앱 설치 버튼 */}
       {!isStandalone && (
@@ -81,12 +83,10 @@ export default function LoginScreen() {
         </div>
       )}
 
-      <div className="text-center mb-16">
-        <h1 className="text-4xl font-bold text-brand mb-2">Petiary</h1>
-        <p className="text-gray-600">반려동물과 함께하는 소중한 시간들<br />잊지 않도록 순간을 남겨보세요!</p>
-      </div>
+      {/* 🌟 기존의 Petiary 타이틀과 문구는 요청하신 대로 삭제했습니다! */}
 
-      <div className="w-full px-8 flex flex-col gap-4">
+      {/* 하단 로그인 버튼 영역 */}
+      <div className="w-full px-8 flex flex-col gap-4 z-10">
         <button 
           className="w-full bg-brand h-14 rounded-full flex justify-center items-center shadow-md text-white text-lg font-bold transition active:scale-95"
           onClick={() => setModalVisible(true)}
@@ -108,6 +108,7 @@ export default function LoginScreen() {
         </button>
       </div>
 
+      {/* 이메일 로그인/가입 모달 */}
       {modalVisible && (
         <div className="absolute inset-0 bg-black/50 flex flex-col justify-end z-50">
           <div className="bg-white rounded-t-3xl p-6 min-h-[450px] w-full animate-[slideUp_0.3s_ease-out]">

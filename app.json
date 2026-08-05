@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Petiary",
+    "slug": "petiary",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "shortName": "Petiary",
+      "themeColor": "#FF7F50",
+      "backgroundColor": "#FFF9F5"
+    }
+  }
+}

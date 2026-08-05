@@ -8,6 +8,7 @@
     "build": "expo export -p web"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~3.2.3",  // 이 줄을 추가해 주세요! (끝에 쉼표 필수)
     "@expo/vector-icons": "^14.0.2",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.17",

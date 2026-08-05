@@ -11,9 +11,8 @@ export default function Home() {
   const [selectedDog, setSelectedDog] = useState(doggyData[0]);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  
-  // 🌟 1. 데이터를 불러오는 중인지 확인하는 로딩 상태 (처음엔 무조건 true)
   const [isLoading, setIsLoading] = useState(true); 
+  const [isModalReady, setIsModalReady] = useState(false);
 
   const dragRef = useRef({ startX: 0, startY: 0, initPosX: 0, initPosY: 0, isDragged: false, lastX: 0, lastY: 0 });
 
@@ -53,9 +52,20 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (isModalOpen) {
+      const timer = setTimeout(() => setIsModalReady(true), 300);
+      return () => clearTimeout(timer);
+    } else {
+      setIsModalReady(false);
+    }
+  }, [isModalOpen]);
+
   // ... (handleDogSelect, handlePointerDown 등 함수들은 기존 코드 그대로 유지) ...
 
   const handleDogSelect = async (dog) => {
+    if (!isModalReady) return;
+    
     setSelectedDog(dog);
     setIsModalOpen(false);
     if (auth.currentUser) {
@@ -160,7 +170,10 @@ export default function Home() {
                 <button
                   key={dog.id}
                   onClick={() => handleDogSelect(dog)}
-                  className={`flex flex-col items-center p-4 rounded-2xl border-2 transition active:scale-95 ${
+                  // 👉 수정: isModalReady가 켜졌을 때만 눌리는 애니메이션 작동
+                  className={`flex flex-col items-center p-4 rounded-2xl border-2 transition ${
+                    isModalReady ? 'active:scale-95' : 'opacity-90'
+                  } ${
                     selectedDog.id === dog.id ? 'border-brand bg-brand/5' : 'border-gray-100 hover:bg-gray-50'
                   }`}
                 >

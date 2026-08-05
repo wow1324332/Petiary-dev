@@ -1,14 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
+import { Download } from 'lucide-react'; // 🌟 다운로드 아이콘 추가
 
 export default function LoginScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [isLoginTab, setIsLoginTab] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // 🌟 PWA 설치를 위한 상태값
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false); // 이미 앱으로 켜져있는지 확인
 
-  // 이메일 로그인/가입 처리
+  useEffect(() => {
+    // 1. 현재 기기가 아이폰/아이패드인지 감지
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const ios = /iphone|ipad|ipod/.test(userAgent);
+    setIsIOS(ios);
+
+    // 2. 이미 홈 화면에 추가된 '앱 모드'로 실행 중인지 감지
+    const standalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    setIsStandalone(standalone);
+
+    // 3. 안드로이드(Chrome) 설치 프롬프트 이벤트 가로채기
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  // 🌟 설치 버튼 클릭 시 동작
+  const handleInstallClick = async () => {
+    if (isIOS) {
+      alert("아이폰에서는 화면 하단의 ⬆️[공유] 버튼을 누른 후, ➕[홈 화면에 추가]를 선택해주세요!");
+      return;
+    }
+    
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      alert("이미 앱이 설치되어 있거나 브라우저에서 지원하지 않습니다.");
+    }
+  };
+
   const handleEmailSubmit = async (e) => {
     e.preventDefault(); 
     try {
@@ -22,12 +65,10 @@ export default function LoginScreen() {
     }
   };
 
-  // 🌟 구글 로그인 팝업 처리
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      // 로그인 성공 시 App.jsx의 onAuthStateChanged가 감지해서 자동으로 홈 화면으로 넘어갑니다!
     } catch (error) {
       console.error(error);
       alert("구글 로그인 중 오류가 발생했습니다.");
@@ -36,13 +77,26 @@ export default function LoginScreen() {
 
   return (
     <div className="flex flex-col h-screen max-w-md mx-auto bg-bglight items-center justify-center relative shadow-xl">
+      
+      {/* 🌟 우측 상단 앱 설치 버튼 (이미 앱으로 켜져있으면 숨김) */}
+      {!isStandalone && (
+        <div className="absolute top-4 right-4 z-10">
+          <button 
+            onClick={handleInstallClick}
+            className="flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm text-brand font-bold text-sm border border-brand/20 transition active:scale-95"
+          >
+            <Download size={16} />
+            앱 설치
+          </button>
+        </div>
+      )}
+
       <div className="text-center mb-16">
         <h1 className="text-4xl font-bold text-brand mb-2">Petiary</h1>
         <p className="text-gray-600">반려동물과 함께하는 소중한 시간들<br />잊지 않도록 순간을 남겨보세요!</p>
       </div>
 
       <div className="w-full px-8 flex flex-col gap-4">
-        {/* 이메일로 시작하기 버튼 */}
         <button 
           className="w-full bg-brand h-14 rounded-full flex justify-center items-center shadow-md text-white text-lg font-bold transition active:scale-95"
           onClick={() => setModalVisible(true)}
@@ -50,12 +104,10 @@ export default function LoginScreen() {
           이메일로 시작하기
         </button>
 
-        {/* 🌟 구글계정으로 시작하기 버튼 */}
         <button 
           className="w-full bg-white h-14 rounded-full flex justify-center items-center shadow-md text-gray-700 text-base font-bold border border-gray-200 transition active:scale-95"
           onClick={handleGoogleLogin}
         >
-          {/* 구글 로고 SVG */}
           <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -66,7 +118,6 @@ export default function LoginScreen() {
         </button>
       </div>
 
-      {/* 이메일 로그인/가입 모달 (기존과 동일) */}
       {modalVisible && (
         <div className="absolute inset-0 bg-black/50 flex flex-col justify-end z-50">
           <div className="bg-white rounded-t-3xl p-6 min-h-[450px] w-full animate-[slideUp_0.3s_ease-out]">

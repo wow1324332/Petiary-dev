@@ -72,14 +72,100 @@ import { onAuthStateChanged } from 'firebase/auth';
     }
   };
 
+// =============================================================================
+// 🌟 가구 컴포넌트 (롱프레스 유지, 버튼 크기 고정, 미세 떨림 방지 적용)
+// =============================================================================
+const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
+  const [pos, setPos] = useState({ x: item.x, y: item.y });
+  const [scale, setScale] = useState(item.scale || 1);
+  const [showDelete, setShowDelete] = useState(false); 
+  
+  const longPressTimer = useRef(null); 
+  // 🌟 1. 롱프레스가 성공했는지 기억하는 변수 추가
+  const isLongPressed = useRef(false); 
+
+  const pointers = useRef(new Map()); 
+  const dragStart = useRef({ x: 0, y: 0, initX: pos.x, initY: pos.y });
+  const pinchStart = useRef({ dist: 0, initScale: scale });
+  const isModified = useRef(false);
+
+  const handlePointerDown = (e) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    isLongPressed.current = false; // 초기화
+    longPressTimer.current = setTimeout(() => {
+      setShowDelete(true);
+      isLongPressed.current = true; // 🌟 0.5초를 채우면 롱프레스로 인정!
+    }, 500);
+
+    if (pointers.current.size === 1) {
+      dragStart.current = { x: e.clientX, y: e.clientY, initX: pos.x, initY: pos.y };
+    } else if (pointers.current.size === 2) {
+      const pts = Array.from(pointers.current.values());
+      pinchStart.current = { dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), initScale: scale };
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.current.size === 1) {
+      const dx = e.clientX - dragStart.current.x;
+      const dy = e.clientY - dragStart.current.y;
+      
+      // 🌟 2. 손가락이 5px 이상 확실하게 움직였을 때만 이동으로 간주 (미세한 떨림에 롱프레스가 취소되는 것 방지)
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        clearTimeout(longPressTimer.current);
+        setShowDelete(false); 
+        setPos({ x: dragStart.current.initX + dx, y: dragStart.current.initY + dy });
+        isModified.current = true;
+      }
+    } else if (pointers.current.size === 2) {
+      clearTimeout(longPressTimer.current);
+      setShowDelete(false);
+      const pts = Array.from(pointers.current.values());
+      setScale(Math.max(0.3, Math.min(2.5, pinchStart.current.initScale * (Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) / pinchStart.current.dist))));
+      isModified.current = true;
+    }
+  };
+
+  const handlePointerUp = (e) => {
+    clearTimeout(longPressTimer.current); 
+    pointers.current.delete(e.pointerId);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    
+    if (pointers.current.size === 0) {
+      if (isModified.current) {
+        onUpdate(item.instanceId, pos.x, pos.y, scale);
+        isModified.current = false;
+      } else {
+        // 🌟 3. 롱프레스가 아니었던 경우(그냥 가볍게 툭 친 경우)에만 삭제 버튼을 숨김
+        if (!isLongPressed.current) {
+          setShowDelete(false);
+        }
+      }
+    }
+  };
+
   return (
     <div
       onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}
-      className="absolute top-1/2 left-1/2 touch-none cursor-grab active:cursor-grabbing z-0"
-      style={{ transform: `translate3d(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px), 0) scale(${scale})` }}
+      onContextMenu={(e) => e.preventDefault()}
+      className="absolute top-1/2 left-1/2 touch-none select-none cursor-grab active:cursor-grabbing z-0"
+      // 🌟 4. 제일 바깥 상자에는 '위치(translate)'만 적용합니다.
+      style={{ 
+        transform: `translate3d(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px), 0)`,
+        WebkitTouchCallout: 'none'
+      }}
     >
-      <img src={item.image} alt="가구" draggable={false} className="w-48 object-contain drop-shadow-md relative" />
+      {/* 🌟 5. 이미지를 감싸는 안쪽 상자에만 '크기(scale)'를 적용합니다. */}
+      <div style={{ transform: `scale(${scale})` }}>
+        <img src={item.image} alt="가구" draggable={false} className="w-48 object-contain drop-shadow-md relative pointer-events-none" />
+      </div>
       
+      {/* 🌟 6. 삭제 버튼은 안쪽 상자 밖에 있으므로, 가구가 커져도 얘는 원래 크기를 유지합니다! */}
       {showDelete && (
         <button
           onPointerDown={(e) => e.stopPropagation()} 

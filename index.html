@@ -5,12 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Petiary</title>
     <meta name="theme-color" content="#FF7F50" />
+    
+    <!-- PWA 신분증 -->
     <link rel="manifest" href="/manifest.json" />
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
-    }
-  </script>
+    <script>
+      // 1. 서비스 워커 등록
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js');
+      }
+      // 2. 🌟 크롬의 설치 신호가 날아오면 전역 변수에 꽉 잡아두기!
+      window.deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPrompt = e;
+      });
+    </script>
   </head>
   <body class="bg-bglight m-0 p-0 h-screen w-screen overflow-hidden">
     <div id="root" class="h-full w-full"></div>

@@ -11,29 +11,32 @@ import { onAuthStateChanged } from 'firebase/auth';
 // =============================================================================
 // 🌟 [신규 컴포넌트] 가구의 개별 이동 & 핀치 줌을 담당하는 컴포넌트
 // =============================================================================
-const DraggableFurniture = ({ item, onUpdate, isModalReady }) => {
+  const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
   const [pos, setPos] = useState({ x: item.x, y: item.y });
   const [scale, setScale] = useState(item.scale || 1);
   
-  // 멀티 터치(손가락 여러 개)를 추적하기 위한 저장소
+  // 🌟 추가: 삭제 버튼 노출 상태와 롱프레스 타이머
+  const [showDelete, setShowDelete] = useState(false); 
+  const longPressTimer = useRef(null); 
+
   const pointers = useRef(new Map()); 
   const dragStart = useRef({ x: 0, y: 0, initX: pos.x, initY: pos.y });
   const pinchStart = useRef({ dist: 0, initScale: scale });
-  const isModified = useRef(false); // 변경사항이 있는지 체크
+  const isModified = useRef(false);
 
   const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // 손가락 1개: 이동(Drag) 준비
-    if (pointers.current.size === 1) {
-      dragStart.current = { x: e.clientX, y: e.clientY, initX: pos.x, initY: pos.y };
-    } 
-    // 손가락 2개: 확대/축소(Pinch Zoom) 준비
+    // 🌟 가구를 누르는 순간 0.5초(500ms) 타이머 시작!
+    longPressTimer.current = setTimeout(() => {
+      setShowDelete(true);
+    }, 500);
+
+    if (pointers.current.size === 1) dragStart.current = { x: e.clientX, y: e.clientY, initX: pos.x, initY: pos.y };
     else if (pointers.current.size === 2) {
       const pts = Array.from(pointers.current.values());
-      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      pinchStart.current = { dist, initScale: scale };
+      pinchStart.current = { dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), initScale: scale };
     }
   };
 
@@ -41,48 +44,54 @@ const DraggableFurniture = ({ item, onUpdate, isModalReady }) => {
     if (!pointers.current.has(e.pointerId)) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // 손가락 1개: 위치 이동
+    // 🌟 손가락이 조금이라도 움직이면 롱프레스 취소 (드래그 중엔 X버튼 숨김)
+    clearTimeout(longPressTimer.current);
+    setShowDelete(false); 
+
     if (pointers.current.size === 1) {
-      const dx = e.clientX - dragStart.current.x;
-      const dy = e.clientY - dragStart.current.y;
-      setPos({ x: dragStart.current.initX + dx, y: dragStart.current.initY + dy });
+      setPos({ x: dragStart.current.initX + (e.clientX - dragStart.current.x), y: dragStart.current.initY + (e.clientY - dragStart.current.y) });
       isModified.current = true;
-    } 
-    // 손가락 2개: 크기 조절
-    else if (pointers.current.size === 2) {
+    } else if (pointers.current.size === 2) {
       const pts = Array.from(pointers.current.values());
-      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      // 최소 0.3배 ~ 최대 2.5배까지만 커지도록 제한
-      const newScale = Math.max(0.3, Math.min(2.5, pinchStart.current.initScale * (dist / pinchStart.current.dist))); 
-      setScale(newScale);
+      setScale(Math.max(0.3, Math.min(2.5, pinchStart.current.initScale * (Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) / pinchStart.current.dist))));
       isModified.current = true;
     }
   };
 
   const handlePointerUp = (e) => {
+    clearTimeout(longPressTimer.current); // 🌟 손을 떼면 무조건 타이머 취소
     pointers.current.delete(e.pointerId);
     e.currentTarget.releasePointerCapture(e.pointerId);
     
-    // 터치가 모두 끝났고, 움직인 기록이 있다면 파이어베이스 저장을 위해 부모에게 알림!
-    if (pointers.current.size === 0 && isModified.current) {
-      onUpdate(item.instanceId, pos.x, pos.y, scale);
-      isModified.current = false;
+    if (pointers.current.size === 0) {
+      if (isModified.current) {
+        onUpdate(item.instanceId, pos.x, pos.y, scale);
+        isModified.current = false;
+      } else {
+        // 🌟 가구를 그냥 톡! 치면 떠있던 X 버튼이 사라지도록 처리 (UX 개선)
+        if (showDelete) setShowDelete(false);
+      }
     }
   };
 
   return (
     <div
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}
       className="absolute top-1/2 left-1/2 touch-none cursor-grab active:cursor-grabbing z-0"
-      style={{ 
-        // 🌟 위치(translate)와 크기(scale)를 동시에 적용
-        transform: `translate3d(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px), 0) scale(${scale})` 
-      }}
+      style={{ transform: `translate3d(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px), 0) scale(${scale})` }}
     >
-      <img src={item.image} alt="가구" draggable={false} className="w-48 object-contain drop-shadow-md" />
+      <img src={item.image} alt="가구" draggable={false} className="w-48 object-contain drop-shadow-md relative" />
+
+      {/* 🌟 우측 상단 귀여운 삭제(X) 버튼 */}
+      {showDelete && (
+        <button
+          onPointerDown={(e) => e.stopPropagation()} // X버튼 누를 땐 가구 드래그 안 되게 막기
+          onClick={(e) => { e.stopPropagation(); onDelete(item.instanceId); }}
+          className="absolute -top-3 -right-3 w-8 h-8 bg-white text-red-500 rounded-full flex items-center justify-center shadow-lg border-2 border-red-100 z-50 transition active:scale-90"
+        >
+          <X size={18} strokeWidth={3} />
+        </button>
+      )}
     </div>
   );
 };
@@ -196,7 +205,12 @@ export default function Home() {
     );
     setPlacedFurniture(updatedFurniture);
 
-    // 파이어베이스 저장
+    const handleFurnitureDelete = async (instanceId) => {
+    // 삭제하려는 가구만 쏙 빼고 배열을 새로 만듭니다.
+    const updatedFurniture = placedFurniture.filter(item => item.instanceId !== instanceId);
+    setPlacedFurniture(updatedFurniture);
+    
+    // 파이어베이스에도 삭제된 결과를 저장!
     if (auth.currentUser) {
       const userRef = doc(db, 'users', auth.currentUser.uid);
       await setDoc(userRef, { myPlacedFurniture: updatedFurniture }, { merge: true });
@@ -253,13 +267,13 @@ export default function Home() {
           <div className="h-full aspect-square relative">
             <img src={selectedBg.image} alt="룸 배경" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
 
-            {/* 🌟 1. 배치된 가구들 렌더링 영역 (강아지보다 뒤에 보이도록 z-0 할당) */}
+            {/* 👉 수정: onDelete 연결하기 */}
             {placedFurniture.map(item => (
               <DraggableFurniture 
                 key={item.instanceId} 
                 item={item} 
                 onUpdate={handleFurnitureUpdate} 
-                isModalReady={isModalReady} 
+                onDelete={handleFurnitureDelete} 
               />
             ))}
 

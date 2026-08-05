@@ -121,6 +121,8 @@ const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true); 
   const [isModalReady, setIsModalReady] = useState(false);
+
+  const scrollRef = useRef(null);
   
   const [selectedDog, setSelectedDog] = useState(doggyData[0]);
   const [dogPosition, setDogPosition] = useState({ x: 0, y: 0 });
@@ -179,6 +181,14 @@ export default function Home() {
       setIsModalReady(false);
     }
   }, [isDogModalOpen, isBgModalOpen, isFurnModalOpen]);
+
+  useEffect(() => {
+    if (!isLoading && scrollRef.current) {
+      const container = scrollRef.current;
+      // 전체 스크롤 길이에서 현재 화면 너비를 뺀 후 반으로 나누면 정확히 정중앙이 됩니다.
+      container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+    }
+  }, [isLoading]);
 
   // 가구 추가
   const handleFurnitureSelect = async (furnItem) => {
@@ -254,7 +264,7 @@ export default function Home() {
           <span className="text-gray-400 font-medium">펫의 방을 여는 중... 🐾</span>
         </div>
       ) : (
-        <div className="flex-1 w-full overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div ref={scrollRef} className="flex-1 w-full overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <div className="h-full aspect-square relative">
             <img src={selectedBg.image} alt="룸 배경" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
 

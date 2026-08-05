@@ -3,19 +3,17 @@ import { Link } from 'react-router-dom';
 import { Settings, X, Loader2, Pencil } from 'lucide-react'; 
 import { doggyData } from '../data/doggyData';
 import { backgroundData } from '../data/backgroundData';
-import { furnitureData } from '../data/furnitureData'; // 🌟 가구 데이터 불러오기
+import { furnitureData } from '../data/furnitureData'; 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig'; 
 import { onAuthStateChanged } from 'firebase/auth';
 
 // =============================================================================
-// 🌟 [신규 컴포넌트] 가구의 개별 이동 & 핀치 줌을 담당하는 컴포넌트
+// 🌟 가구 컴포넌트 (이동, 핀치 줌, 롱프레스 삭제 기능 포함)
 // =============================================================================
-  const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
+const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
   const [pos, setPos] = useState({ x: item.x, y: item.y });
   const [scale, setScale] = useState(item.scale || 1);
-  
-  // 🌟 추가: 삭제 버튼 노출 상태와 롱프레스 타이머
   const [showDelete, setShowDelete] = useState(false); 
   const longPressTimer = useRef(null); 
 
@@ -28,13 +26,14 @@ import { onAuthStateChanged } from 'firebase/auth';
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // 🌟 가구를 누르는 순간 0.5초(500ms) 타이머 시작!
+    // 0.5초 동안 누르면 삭제 버튼 띄우기
     longPressTimer.current = setTimeout(() => {
       setShowDelete(true);
     }, 500);
 
-    if (pointers.current.size === 1) dragStart.current = { x: e.clientX, y: e.clientY, initX: pos.x, initY: pos.y };
-    else if (pointers.current.size === 2) {
+    if (pointers.current.size === 1) {
+      dragStart.current = { x: e.clientX, y: e.clientY, initX: pos.x, initY: pos.y };
+    } else if (pointers.current.size === 2) {
       const pts = Array.from(pointers.current.values());
       pinchStart.current = { dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), initScale: scale };
     }
@@ -44,7 +43,7 @@ import { onAuthStateChanged } from 'firebase/auth';
     if (!pointers.current.has(e.pointerId)) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // 🌟 손가락이 조금이라도 움직이면 롱프레스 취소 (드래그 중엔 X버튼 숨김)
+    // 움직이면 롱프레스 취소
     clearTimeout(longPressTimer.current);
     setShowDelete(false); 
 
@@ -59,7 +58,7 @@ import { onAuthStateChanged } from 'firebase/auth';
   };
 
   const handlePointerUp = (e) => {
-    clearTimeout(longPressTimer.current); // 🌟 손을 떼면 무조건 타이머 취소
+    clearTimeout(longPressTimer.current); 
     pointers.current.delete(e.pointerId);
     e.currentTarget.releasePointerCapture(e.pointerId);
     
@@ -68,7 +67,6 @@ import { onAuthStateChanged } from 'firebase/auth';
         onUpdate(item.instanceId, pos.x, pos.y, scale);
         isModified.current = false;
       } else {
-        // 🌟 가구를 그냥 톡! 치면 떠있던 X 버튼이 사라지도록 처리 (UX 개선)
         if (showDelete) setShowDelete(false);
       }
     }
@@ -81,11 +79,10 @@ import { onAuthStateChanged } from 'firebase/auth';
       style={{ transform: `translate3d(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px), 0) scale(${scale})` }}
     >
       <img src={item.image} alt="가구" draggable={false} className="w-48 object-contain drop-shadow-md relative" />
-
-      {/* 🌟 우측 상단 귀여운 삭제(X) 버튼 */}
+      
       {showDelete && (
         <button
-          onPointerDown={(e) => e.stopPropagation()} // X버튼 누를 땐 가구 드래그 안 되게 막기
+          onPointerDown={(e) => e.stopPropagation()} 
           onClick={(e) => { e.stopPropagation(); onDelete(item.instanceId); }}
           className="absolute -top-3 -right-3 w-8 h-8 bg-white text-red-500 rounded-full flex items-center justify-center shadow-lg border-2 border-red-100 z-50 transition active:scale-90"
         >
@@ -96,32 +93,26 @@ import { onAuthStateChanged } from 'firebase/auth';
   );
 };
 
-
 // =============================================================================
-// 🌟 메인 홈 화면 컴포넌트
+// 🌟 홈 화면 메인 컴포넌트
 // =============================================================================
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true); 
   const [isModalReady, setIsModalReady] = useState(false);
   
-  // 강아지 & 배경 상태
   const [selectedDog, setSelectedDog] = useState(doggyData[0]);
   const [dogPosition, setDogPosition] = useState({ x: 0, y: 0 });
   const [selectedBg, setSelectedBg] = useState(backgroundData[0]);
-  
-  // 🌟 배치된 가구들을 담는 배열 (여러 개의 가구를 배치할 수 있습니다!)
   const [placedFurniture, setPlacedFurniture] = useState([]);
 
-  // 모달 오픈 상태
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDogModalOpen, setIsDogModalOpen] = useState(false);
   const [isBgModalOpen, setIsBgModalOpen] = useState(false);
-  const [isFurnModalOpen, setIsFurnModalOpen] = useState(false); // 가구 모달
+  const [isFurnModalOpen, setIsFurnModalOpen] = useState(false); 
 
   const dogDragRef = useRef({ startX: 0, startY: 0, initPosX: 0, initPosY: 0, isDragged: false, lastX: 0, lastY: 0 });
   const [isDogDragging, setIsDogDragging] = useState(false);
 
-  // 1. 파이어베이스 데이터 불러오기
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -140,10 +131,7 @@ export default function Home() {
               const foundBg = backgroundData.find(bg => bg.id === userData.mySelectedBg);
               if (foundBg) setSelectedBg(foundBg);
             }
-            // 🌟 배치된 가구들 불러오기
-            if (userData.myPlacedFurniture) {
-              setPlacedFurniture(userData.myPlacedFurniture);
-            }
+            if (userData.myPlacedFurniture) setPlacedFurniture(userData.myPlacedFurniture);
           }
         } catch (error) {
           console.error("데이터 불러오기 에러:", error);
@@ -161,7 +149,6 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // 2. 모달 방어막 타이머 (고스트 클릭 방지)
   useEffect(() => {
     if (isDogModalOpen || isBgModalOpen || isFurnModalOpen) {
       const timer = setTimeout(() => setIsModalReady(true), 300);
@@ -171,59 +158,38 @@ export default function Home() {
     }
   }, [isDogModalOpen, isBgModalOpen, isFurnModalOpen]);
 
-
-  // 3. 🌟 가구 추가 함수 (방 정중앙에 기본 크기로 톡! 떨어집니다)
+  // 가구 추가
   const handleFurnitureSelect = async (furnItem) => {
     if (!isModalReady) return; 
-    
-    // 새 가구 데이터 생성 (고유한 instanceId 부여)
-    const newFurniture = {
-      instanceId: Date.now(), // 고유 번호 (여러 개의 소파를 구분하기 위해)
-      baseId: furnItem.id,
-      image: furnItem.image,
-      x: 0, 
-      y: 0, 
-      scale: 1
-    };
-
+    const newFurniture = { instanceId: Date.now(), baseId: furnItem.id, image: furnItem.image, x: 0, y: 0, scale: 1 };
     const updatedFurniture = [...placedFurniture, newFurniture];
     setPlacedFurniture(updatedFurniture);
     setIsFurnModalOpen(false);
-
-    // 파이어베이스에 전체 가구 배열 업데이트
-    if (auth.currentUser) {
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      await setDoc(userRef, { myPlacedFurniture: updatedFurniture }, { merge: true });
-    }
+    if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { myPlacedFurniture: updatedFurniture }, { merge: true });
   };
 
-  // 4. 🌟 가구 이동/크기조절 완료 시 실행되는 함수
+  // 가구 위치/크기 업데이트
   const handleFurnitureUpdate = async (instanceId, newX, newY, newScale) => {
-    // 변경된 가구만 데이터를 업데이트해서 배열 교체
     const updatedFurniture = placedFurniture.map(item => 
       item.instanceId === instanceId ? { ...item, x: newX, y: newY, scale: newScale } : item
     );
     setPlacedFurniture(updatedFurniture);
-
-    const handleFurnitureDelete = async (instanceId) => {
-    // 삭제하려는 가구만 쏙 빼고 배열을 새로 만듭니다.
-    const updatedFurniture = placedFurniture.filter(item => item.instanceId !== instanceId);
-    setPlacedFurniture(updatedFurniture);
-    
-    // 파이어베이스에도 삭제된 결과를 저장!
-    if (auth.currentUser) {
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      await setDoc(userRef, { myPlacedFurniture: updatedFurniture }, { merge: true });
-    }
+    if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { myPlacedFurniture: updatedFurniture }, { merge: true });
   };
 
+  // 가구 삭제
+  const handleFurnitureDelete = async (instanceId) => {
+    const updatedFurniture = placedFurniture.filter(item => item.instanceId !== instanceId);
+    setPlacedFurniture(updatedFurniture);
+    if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { myPlacedFurniture: updatedFurniture }, { merge: true });
+  };
 
-  // 강아지 드래그 및 선택 로직 (기존과 동일)
   const handleDogSelect = async (dog) => {
     if (!isModalReady) return; 
     setSelectedDog(dog); setIsDogModalOpen(false);
     if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { mySelectedDog: dog.id }, { merge: true });
   };
+
   const handleBgSelect = async (bg) => {
     if (!isModalReady) return; 
     setSelectedBg(bg); setIsBgModalOpen(false);
@@ -234,6 +200,7 @@ export default function Home() {
     e.currentTarget.setPointerCapture(e.pointerId); setIsDogDragging(true);
     dogDragRef.current = { startX: e.clientX, startY: e.clientY, initPosX: dogPosition.x, initPosY: dogPosition.y, isDragged: false, lastX: dogPosition.x, lastY: dogPosition.y };
   };
+
   const handleDogPointerMove = (e) => {
     if (!isDogDragging) return;
     const dx = e.clientX - dogDragRef.current.startX; const dy = e.clientY - dogDragRef.current.startY;
@@ -242,6 +209,7 @@ export default function Home() {
     dogDragRef.current.lastX = newX; dogDragRef.current.lastY = newY;
     setDogPosition({ x: newX, y: newY });
   };
+
   const handleDogPointerUp = async (e) => {
     if (!isDogDragging) return;
     setIsDogDragging(false); e.currentTarget.releasePointerCapture(e.pointerId);
@@ -267,7 +235,7 @@ export default function Home() {
           <div className="h-full aspect-square relative">
             <img src={selectedBg.image} alt="룸 배경" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
 
-            {/* 👉 수정: onDelete 연결하기 */}
+            {/* 가구 렌더링 */}
             {placedFurniture.map(item => (
               <DraggableFurniture 
                 key={item.instanceId} 
@@ -277,7 +245,7 @@ export default function Home() {
               />
             ))}
 
-            {/* 2. 강아지 렌더링 영역 (가구보다 앞에 보이도록 z-10 할당) */}
+            {/* 강아지 렌더링 */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="pointer-events-auto touch-none relative z-10" style={{ transform: `translate3d(${dogPosition.x}px, ${dogPosition.y}px, 0)` }}>
                 <div onPointerDown={handleDogPointerDown} onPointerMove={handleDogPointerMove} onPointerUp={handleDogPointerUp} onPointerCancel={handleDogPointerUp} className="cursor-grab active:cursor-grabbing animate-[bounce_3s_ease-in-out_infinite] rounded-full">
@@ -289,13 +257,12 @@ export default function Home() {
         </div>
       )}
 
-      {/* 플로팅 버튼 영역 */}
+      {/* 우측 하단 플로팅 메뉴 */}
       <div className="absolute bottom-6 right-6 z-40 flex flex-col items-end gap-3">
         {isFabOpen && (
           <div className="flex flex-col gap-3 animate-[slideUp_0.2s_ease-out] origin-bottom-right">
             {[
               { label: '배경 변경', action: () => { setIsBgModalOpen(true); setIsFabOpen(false); } },
-              // 🌟 '가구 배치' 버튼 클릭 시 모달 연결
               { label: '가구 배치', action: () => { setIsFurnModalOpen(true); setIsFabOpen(false); } },
               { label: '가전 배치', action: () => {} },
               { label: '소품 배치', action: () => {} },
@@ -312,7 +279,7 @@ export default function Home() {
         </button>
       </div>
 
-      {/* 펫 & 배경 모달 (생략 없이 모두 포함) */}
+      {/* 펫 선택 모달 */}
       {isDogModalOpen && (
         <div className="absolute inset-0 bg-black/50 flex flex-col justify-end z-50">
           <div className="bg-white rounded-t-3xl p-6 min-h-[350px] w-full animate-[slideUp_0.3s_ease-out]">
@@ -332,6 +299,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* 배경 선택 모달 */}
       {isBgModalOpen && (
         <div className="absolute inset-0 bg-black/50 flex flex-col justify-end z-50">
           <div className="bg-white rounded-t-3xl p-6 min-h-[350px] w-full animate-[slideUp_0.3s_ease-out]">
@@ -351,7 +319,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* 🌟 가구 선택 모달 */}
+      {/* 가구 배치 모달 */}
       {isFurnModalOpen && (
         <div className="absolute inset-0 bg-black/50 flex flex-col justify-end z-50">
           <div className="bg-white rounded-t-3xl p-6 min-h-[350px] w-full animate-[slideUp_0.3s_ease-out]">
@@ -374,7 +342,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

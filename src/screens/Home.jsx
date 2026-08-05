@@ -22,7 +22,6 @@ const DraggableFurniture = ({ item, onUpdate, isModalReady }) => {
   const isModified = useRef(false); // 변경사항이 있는지 체크
 
   const handlePointerDown = (e) => {
-    if (!isModalReady) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 

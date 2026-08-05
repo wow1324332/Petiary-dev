@@ -11,7 +11,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 // =============================================================================
 // 🌟 가구 컴포넌트 (이동, 핀치 줌, 롱프레스 삭제 기능 포함)
 // =============================================================================
-const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
+  const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
   const [pos, setPos] = useState({ x: item.x, y: item.y });
   const [scale, setScale] = useState(item.scale || 1);
   const [showDelete, setShowDelete] = useState(false); 
@@ -218,7 +218,8 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-full relative overflow-hidden bg-gray-100">
+    <div className="flex flex-col h-full relative overflow-hidden bg-gray-100"
+      onContextMenu={(e) => e.preventDefault()}>
       <div className="absolute top-0 right-0 p-5 z-40">
         <Link to="/settings" className="text-gray-600 hover:text-brand transition block active:scale-95 bg-white/50 backdrop-blur-sm p-2 rounded-full">
           <Settings size={24} />
@@ -290,7 +291,7 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-4">
               {doggyData.map((dog) => (
                 <button key={dog.id} onClick={() => handleDogSelect(dog)} className={`flex flex-col items-center p-4 rounded-2xl border-2 transition ${isModalReady ? 'active:scale-95' : 'opacity-90'} ${selectedDog.id === dog.id ? 'border-brand bg-brand/5' : 'border-gray-100 hover:bg-gray-50'}`}>
-                  <img src={dog.image} alt={dog.name} className="w-16 h-16 object-contain mb-3 drop-shadow-sm" />
+                  <img src={dog.image} alt={dog.name} className="w-16 h-16 object-contain mb-3 drop-shadow-sm" pointer-events-none/>
                   <span className="text-sm font-bold text-gray-700">{dog.name}</span>
                 </button>
               ))}
@@ -334,7 +335,7 @@ export default function Home() {
                   onClick={() => handleFurnitureSelect(furn)}
                   className={`flex flex-col items-center p-4 rounded-2xl border-2 border-gray-100 hover:bg-gray-50 transition ${isModalReady ? 'active:scale-95' : 'opacity-90'}`}
                 >
-                  <img src={furn.image} alt={furn.name} className="w-16 h-16 object-contain mb-3 drop-shadow-sm" />
+                  <img src={furn.image} alt={furn.name} className="w-16 h-16 object-contain mb-3 drop-shadow-sm" pointer-events-none/>
                   <span className="text-sm font-bold text-gray-700 text-center">{furn.name}</span>
                 </button>
               ))}

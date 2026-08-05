@@ -38,7 +38,7 @@ export default function LoginScreen() {
     <div className="flex flex-col h-screen max-w-md mx-auto bg-bglight items-center justify-center relative shadow-xl">
       <div className="text-center mb-16">
         <h1 className="text-4xl font-bold text-brand mb-2">Petiary</h1>
-        <p className="text-gray-600">반려동물과 함께하는 소중한 시간들/n잊지 않도록 순간을 남겨보세요!</p>
+        <p className="text-gray-600">반려동물과 함께하는 소중한 시간들<br />잊지 않도록 순간을 남겨보세요!</p>
       </div>
 
       <div className="w-full px-8 flex flex-col gap-4">

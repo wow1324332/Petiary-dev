@@ -7,7 +7,6 @@
     "userInterfaceStyle": "light",
     "web": {
       "bundler": "metro",
-      "output": "static",
       "shortName": "Petiary",
       "themeColor": "#FF7F50",
       "backgroundColor": "#FFF9F5"

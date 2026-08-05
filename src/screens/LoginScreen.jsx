@@ -67,7 +67,7 @@ export default function LoginScreen() {
   return (
     <div 
       className="flex flex-col h-screen max-w-md mx-auto bg-cover bg-center relative shadow-xl justify-end pb-12"
-      style={{ backgroundImage: "url('/Login-bg.jpg')" }} // 🌟 배경 이미지 적용
+      style={{ backgroundImage: "url('/Login-bg.webp')" }} // 🌟 배경 이미지 적용
     >
       
       {/* 우측 상단 앱 설치 버튼 */}

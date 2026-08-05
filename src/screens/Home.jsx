@@ -6,71 +6,7 @@ import { backgroundData } from '../data/backgroundData';
 import { furnitureData } from '../data/furnitureData'; 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig'; 
-import { onAuthStateChanged } from 'firebase/auth';
-
-// =============================================================================
-// 🌟 가구 컴포넌트 (이동, 핀치 줌, 롱프레스 삭제 기능 포함)
-// =============================================================================
-  const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
-  const [pos, setPos] = useState({ x: item.x, y: item.y });
-  const [scale, setScale] = useState(item.scale || 1);
-  const [showDelete, setShowDelete] = useState(false); 
-  const longPressTimer = useRef(null); 
-
-  const pointers = useRef(new Map()); 
-  const dragStart = useRef({ x: 0, y: 0, initX: pos.x, initY: pos.y });
-  const pinchStart = useRef({ dist: 0, initScale: scale });
-  const isModified = useRef(false);
-
-  const handlePointerDown = (e) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    // 0.5초 동안 누르면 삭제 버튼 띄우기
-    longPressTimer.current = setTimeout(() => {
-      setShowDelete(true);
-    }, 500);
-
-    if (pointers.current.size === 1) {
-      dragStart.current = { x: e.clientX, y: e.clientY, initX: pos.x, initY: pos.y };
-    } else if (pointers.current.size === 2) {
-      const pts = Array.from(pointers.current.values());
-      pinchStart.current = { dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), initScale: scale };
-    }
-  };
-
-  const handlePointerMove = (e) => {
-    if (!pointers.current.has(e.pointerId)) return;
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    // 움직이면 롱프레스 취소
-    clearTimeout(longPressTimer.current);
-    setShowDelete(false); 
-
-    if (pointers.current.size === 1) {
-      setPos({ x: dragStart.current.initX + (e.clientX - dragStart.current.x), y: dragStart.current.initY + (e.clientY - dragStart.current.y) });
-      isModified.current = true;
-    } else if (pointers.current.size === 2) {
-      const pts = Array.from(pointers.current.values());
-      setScale(Math.max(0.3, Math.min(2.5, pinchStart.current.initScale * (Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) / pinchStart.current.dist))));
-      isModified.current = true;
-    }
-  };
-
-  const handlePointerUp = (e) => {
-    clearTimeout(longPressTimer.current); 
-    pointers.current.delete(e.pointerId);
-    e.currentTarget.releasePointerCapture(e.pointerId);
-    
-    if (pointers.current.size === 0) {
-      if (isModified.current) {
-        onUpdate(item.instanceId, pos.x, pos.y, scale);
-        isModified.current = false;
-      } else {
-        if (showDelete) setShowDelete(false);
-      }
-    }
-  };
+import { onAuthStateChanged } from 'firebase/auth';  
 
 // =============================================================================
 // 🌟 가구 컴포넌트 (롱프레스 유지, 버튼 크기 고정, 미세 떨림 방지 적용)

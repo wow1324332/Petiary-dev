@@ -13,11 +13,11 @@ export const backgroundData = [
   {
     id: 3,
     name: "애견카페",
-    image: "/home-bg-forest" // 나중에 바꿀 임시 이미지
+    image: "/home-bg-forest.jpg" // 나중에 바꿀 임시 이미지
   },
   {
     id: 4,
     name: "모던 아파트",
-    image: "/home-bg-modernapt"
+    image: "/home-bg-modernapt.jpg"
   }
 ];

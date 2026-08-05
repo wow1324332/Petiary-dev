@@ -298,7 +298,7 @@ export default function Home() {
             {/* 강아지 렌더링 */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="pointer-events-auto touch-none relative z-10" style={{ transform: `translate3d(${dogPosition.x}px, ${dogPosition.y}px, 0)` }}>
-                <div onPointerDown={handleDogPointerDown} onPointerMove={handleDogPointerMove} onPointerUp={handleDogPointerUp} onPointerCancel={handleDogPointerUp} className="cursor-grab active:cursor-grabbing animate-[bounce_3s_ease-in-out_infinite] rounded-full">
+                <div onPointerDown={handleDogPointerDown} onPointerMove={handleDogPointerMove} onPointerUp={handleDogPointerUp} onPointerCancel={handleDogPointerUp} className="cursor-grab active:cursor-grabbing rounded-full">
                   <img src={selectedDog.image} alt={selectedDog.name} draggable={false} className="w-44 h-44 object-contain drop-shadow-xl" />
                 </div>
               </div>

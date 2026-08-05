@@ -6,14 +6,18 @@
     <title>Petiary</title>
     <meta name="theme-color" content="#FF7F50" />
     
-    <!-- PWA 신분증 -->
+    <!-- 🌟 배경 이미지 빠르게 불러오기 (Preload) -->
+    <link rel="preload" href="/Login-bg.webp" as="image" />
+    
+    <!-- PWA 신분증 불러오기 -->
     <link rel="manifest" href="/manifest.json" />
     <script>
-      // 1. 서비스 워커 등록
+      // 서비스 워커(PWA 필수 조건) 켜기
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js');
       }
-      // 2. 🌟 크롬의 설치 신호가 날아오면 전역 변수에 꽉 잡아두기!
+      
+      // 크롬이 보내는 '앱 설치' 신호를 놓치지 않고 꽉 잡아두는 잠자리채
       window.deferredPrompt = null;
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();

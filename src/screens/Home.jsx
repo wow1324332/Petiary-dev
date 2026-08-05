@@ -25,6 +25,23 @@ const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
   const pinchStart = useRef({ dist: 0, initScale: scale });
   const isModified = useRef(false);
 
+  useEffect(() => {
+    // 삭제 버튼이 떠 있지 않으면 굳이 감지할 필요 없음
+    if (!showDelete) return; 
+
+    const handleTouchOutside = () => {
+      setShowDelete(false); // 어디든 터치하면 X버튼 숨김
+    };
+
+    // 화면(window) 전체에 터치 감지기를 달아줍니다.
+    window.addEventListener('pointerdown', handleTouchOutside);
+    
+    return () => {
+      // 컴포넌트가 지워지거나 버튼이 숨겨지면 감지기도 깔끔하게 제거
+      window.removeEventListener('pointerdown', handleTouchOutside);
+    };
+  }, [showDelete]);
+
   const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { Download } from 'lucide-react'; // 🌟 다운로드 아이콘 추가
+import { Download } from 'lucide-react';
 
 export default function LoginScreen() {
   const [modalVisible, setModalVisible] = useState(false);
@@ -9,10 +9,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
-  // 🌟 PWA 설치를 위한 상태값
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false); // 이미 앱으로 켜져있는지 확인
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
     // 1. 현재 기기가 아이폰/아이패드인지 감지
@@ -23,32 +21,24 @@ export default function LoginScreen() {
     // 2. 이미 홈 화면에 추가된 '앱 모드'로 실행 중인지 감지
     const standalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
     setIsStandalone(standalone);
-
-    // 3. 안드로이드(Chrome) 설치 프롬프트 이벤트 가로채기
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-  // 🌟 설치 버튼 클릭 시 동작
+  // 🌟 설치 버튼을 눌렀을 때 실행되는 기능
   const handleInstallClick = async () => {
     if (isIOS) {
       alert("아이폰에서는 화면 하단의 ⬆️[공유] 버튼을 누른 후, ➕[홈 화면에 추가]를 선택해주세요!");
       return;
     }
     
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+    // index.html에서 잡아둔 설치 신호를 꺼내서 씁니다.
+    if (window.deferredPrompt) {
+      window.deferredPrompt.prompt();
+      const { outcome } = await window.deferredPrompt.userChoice;
       if (outcome === 'accepted') {
-        setDeferredPrompt(null);
+        window.deferredPrompt = null; // 설치 성공하면 비워줌
       }
     } else {
-      alert("이미 앱이 설치되어 있거나 브라우저에서 지원하지 않습니다.");
+      alert("설치 조건을 확인중입니다. (이 메시지가 계속 뜨면 안드로이드 크롬의 '방문 기록(캐시)'을 한 번 지우고 새로고침 해주세요!)");
     }
   };
 
@@ -78,7 +68,7 @@ export default function LoginScreen() {
   return (
     <div className="flex flex-col h-screen max-w-md mx-auto bg-bglight items-center justify-center relative shadow-xl">
       
-      {/* 🌟 우측 상단 앱 설치 버튼 (이미 앱으로 켜져있으면 숨김) */}
+      {/* 우측 상단 앱 설치 버튼 */}
       {!isStandalone && (
         <div className="absolute top-4 right-4 z-10">
           <button 

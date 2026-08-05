@@ -7,12 +7,17 @@ export const backgroundData = [
   },
   {
     id: 2,
-    name: "핑크 방 (예시)",
-    image: "https://via.placeholder.com/1024/FFB6C1/FFFFFF?text=Pink+Room" // 나중에 바꿀 임시 이미지
+    name: "핑크 룸",
+    image: "/home-bg-pinkroom.jpg" // 나중에 바꿀 임시 이미지
   },
   {
     id: 3,
-    name: "밤하늘 방 (예시)",
-    image: "https://via.placeholder.com/1024/2C3E50/FFFFFF?text=Night+Room" // 나중에 바꿀 임시 이미지
+    name: "애견카페",
+    image: "/home-bg-forest" // 나중에 바꿀 임시 이미지
+  },
+  {
+    id: 4,
+    name: "모던 아파트",
+    image: "/home-bg-modernapt"
   }
 ];

@@ -9,7 +9,7 @@ import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';  
 
 // =============================================================================
-// 🌟 가구 컴포넌트 (롱프레스 유지, 버튼 크기 고정, 미세 떨림 방지 적용)
+// 🌟 가구 컴포넌트 (PC 마우스 휠 확대/축소 기능 추가 완료!)
 // =============================================================================
 const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront, isLocked }) => {
   const [pos, setPos] = useState({ x: item.x, y: item.y });
@@ -17,8 +17,10 @@ const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront, isLocked
   const [showDelete, setShowDelete] = useState(false); 
   
   const longPressTimer = useRef(null); 
-  // 🌟 1. 롱프레스가 성공했는지 기억하는 변수 추가
   const isLongPressed = useRef(false); 
+  
+  // 👉 1. 마우스 휠 연속 저장을 막기 위한 타이머 추가
+  const wheelTimeout = useRef(null); 
 
   const pointers = useRef(new Map()); 
   const dragStart = useRef({ x: 0, y: 0, initX: pos.x, initY: pos.y });
@@ -26,33 +28,23 @@ const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront, isLocked
   const isModified = useRef(false);
 
   useEffect(() => {
-    // 삭제 버튼이 떠 있지 않으면 굳이 감지할 필요 없음
     if (!showDelete) return; 
-
-    const handleTouchOutside = () => {
-      setShowDelete(false); // 어디든 터치하면 X버튼 숨김
-    };
-
-    // 화면(window) 전체에 터치 감지기를 달아줍니다.
+    const handleTouchOutside = () => setShowDelete(false); 
     window.addEventListener('pointerdown', handleTouchOutside);
-    
-    return () => {
-      // 컴포넌트가 지워지거나 버튼이 숨겨지면 감지기도 깔끔하게 제거
-      window.removeEventListener('pointerdown', handleTouchOutside);
-    };
+    return () => window.removeEventListener('pointerdown', handleTouchOutside);
   }, [showDelete]);
 
   const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    onBringToFront(item.instanceId);
+    onBringToFront(item.instanceId); 
 
-    isLongPressed.current = false; // 초기화
+    isLongPressed.current = false;
     longPressTimer.current = setTimeout(() => {
       setShowDelete(true);
-      isLongPressed.current = true; // 🌟 0.5초를 채우면 롱프레스로 인정!
-    }, 800);
+      isLongPressed.current = true;
+    }, 500);
 
     if (pointers.current.size === 1) {
       dragStart.current = { x: e.clientX, y: e.clientY, initX: pos.x, initY: pos.y };
@@ -70,7 +62,6 @@ const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront, isLocked
       const dx = e.clientX - dragStart.current.x;
       const dy = e.clientY - dragStart.current.y;
       
-      // 🌟 2. 손가락이 5px 이상 확실하게 움직였을 때만 이동으로 간주 (미세한 떨림에 롱프레스가 취소되는 것 방지)
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
         clearTimeout(longPressTimer.current);
         setShowDelete(false); 
@@ -96,13 +87,64 @@ const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront, isLocked
         onUpdate(item.instanceId, pos.x, pos.y, scale);
         isModified.current = false;
       } else {
-        // 🌟 3. 롱프레스가 아니었던 경우(그냥 가볍게 툭 친 경우)에만 삭제 버튼을 숨김
         if (!isLongPressed.current) {
           setShowDelete(false);
         }
       }
     }
   };
+
+  // 👉 2. 마우스 휠 이벤트 함수 추가
+  const handleWheel = (e) => {
+    if (isLocked) return; // 자물쇠로 잠겨있으면 크기 조절 불가
+
+    // 스크롤 방향 확인 (위로 굴리면 1, 아래로 굴리면 -1)
+    const zoomStep = 0.1;
+    const direction = e.deltaY < 0 ? 1 : -1;
+
+    setScale((prevScale) => {
+      // 최소 0.3배 ~ 최대 2.5배 안에서 크기 증감
+      const updatedScale = Math.max(0.3, Math.min(2.5, prevScale + (direction * zoomStep)));
+      
+      // 스크롤 할 때마다 타이머를 초기화해서, 스크롤을 멈추고 0.3초(300ms) 뒤에 파이어베이스에 1번만 저장!
+      if (wheelTimeout.current) clearTimeout(wheelTimeout.current);
+      wheelTimeout.current = setTimeout(() => {
+        onUpdate(item.instanceId, pos.x, pos.y, updatedScale);
+      }, 300);
+
+      return updatedScale;
+    });
+  };
+
+  return (
+    <div
+      onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}
+      onWheel={handleWheel} // 👉 3. 휠 이벤트 연결
+      onContextMenu={(e) => e.preventDefault()}
+      className={`absolute top-1/2 left-1/2 select-none z-0 ${
+        isLocked ? 'pointer-events-none' : 'touch-none cursor-grab active:cursor-grabbing pointer-events-auto'
+      }`}
+      style={{ 
+        transform: `translate3d(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px), 0)`,
+        WebkitTouchCallout: 'none'
+      }}
+    >
+      <div style={{ transform: `scale(${scale})` }}>
+        <img src={item.image} alt="가구" draggable={false} className="w-48 object-contain drop-shadow-md relative pointer-events-none" />
+      </div>
+      
+      {showDelete && (
+        <button
+          onPointerDown={(e) => e.stopPropagation()} 
+          onClick={(e) => { e.stopPropagation(); onDelete(item.instanceId); }}
+          className="absolute -top-3 -right-3 w-8 h-8 bg-white text-red-500 rounded-full flex items-center justify-center shadow-lg border-2 border-red-100 z-50 transition active:scale-90"
+        >
+          <X size={18} strokeWidth={3} />
+        </button>
+      )}
+    </div>
+  );
+};
 
   return (
     <div

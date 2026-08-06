@@ -248,6 +248,10 @@ export default function Home() {
   // 가구 추가
   const handleFurnitureSelect = async (furnItem) => {
     if (!isModalReady) return; 
+    if (isLocked) {
+      alert("잠금을 해제하세요!");
+      return; 
+    }
     const newFurniture = { instanceId: Date.now(), baseId: furnItem.id, image: furnItem.image, x: 0, y: 0, scale: 1 };
     const updatedFurniture = [...placedFurniture, newFurniture];
     setPlacedFurniture(updatedFurniture);
@@ -292,12 +296,20 @@ export default function Home() {
 
   const handleDogSelect = async (dog) => {
     if (!isModalReady) return; 
+    if (isLocked) {
+      alert("잠금을 해제하세요!");
+      return; 
+    }
     setSelectedDog(dog); setIsDogModalOpen(false);
     if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { mySelectedDog: dog.id }, { merge: true });
   };
 
   const handleBgSelect = async (bg) => {
     if (!isModalReady) return; 
+    if (isLocked) {
+      alert("잠금을 해제하세요!");
+      return; 
+    }
     setSelectedBg(bg); setIsBgModalOpen(false);
     if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { mySelectedBg: bg.id }, { merge: true });
   };

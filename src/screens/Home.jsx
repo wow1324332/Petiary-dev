@@ -156,6 +156,10 @@ export default function Home() {
   const [isLocked, setIsLocked] = useState(true);
 
   const scrollRef = useRef(null);
+
+  const isDraggingBg = useRef(false);
+  const startX = useRef(0);
+  const scrollLeft = useRef(0);
   
   const [selectedDog, setSelectedDog] = useState(doggyData[0]);
   const [dogPosition, setDogPosition] = useState({ x: 0, y: 0 });
@@ -222,6 +226,24 @@ export default function Home() {
       container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
     }
   }, [isLoading]);
+
+  const handleBgMouseDown = (e) => {
+    if (!isLocked || !scrollRef.current) return; // 잠금 상태일 때만 드래그 허용
+    isDraggingBg.current = true;
+    startX.current = e.pageX - scrollRef.current.offsetLeft;
+    scrollLeft.current = scrollRef.current.scrollLeft;
+  };
+
+  const handleBgMouseLeave = () => { isDraggingBg.current = false; };
+  const handleBgMouseUp = () => { isDraggingBg.current = false; };
+
+  const handleBgMouseMove = (e) => {
+    if (!isDraggingBg.current || !scrollRef.current) return;
+    e.preventDefault(); // 드래그 중 텍스트 선택 등 방지
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX.current) * 1.5; // 1.5는 스크롤 속도 배율
+    scrollRef.current.scrollLeft = scrollLeft.current - walk;
+  };
 
   // 가구 추가
   const handleFurnitureSelect = async (furnItem) => {
@@ -324,8 +346,17 @@ export default function Home() {
           <span className="text-gray-400 font-medium">펫의 방을 여는 중... 🐾</span>
         </div>
       ) : (
-        <div ref={scrollRef} className="flex-1 w-full overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          <div className="h-full aspect-square relative">
+        <div 
+          ref={scrollRef} 
+          // 👇 여기에 마우스 이벤트 4개 연결 👇
+          onMouseDown={handleBgMouseDown}
+          onMouseLeave={handleBgMouseLeave}
+          onMouseUp={handleBgMouseUp}
+          onMouseMove={handleBgMouseMove}
+          // 👇 className 맨 끝에 잠금 상태일 때 손바닥 커서(cursor-grab)가 나오도록 추가 👇
+          className={`flex-1 w-full overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden ${isLocked ? 'cursor-grab active:cursor-grabbing' : ''}`} 
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >          <div className="h-full aspect-square relative">
             <img src={selectedBg.image} alt="룸 배경" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
 
             {/* 가구 렌더링 */}

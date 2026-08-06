@@ -11,7 +11,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 // =============================================================================
 // 🌟 가구 컴포넌트 (롱프레스 유지, 버튼 크기 고정, 미세 떨림 방지 적용)
 // =============================================================================
-const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
+const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront }) => {
   const [pos, setPos] = useState({ x: item.x, y: item.y });
   const [scale, setScale] = useState(item.scale || 1);
   const [showDelete, setShowDelete] = useState(false); 
@@ -46,11 +46,13 @@ const DraggableFurniture = ({ item, onUpdate, onDelete }) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
+    onBringToFront(item.instanceId);
+
     isLongPressed.current = false; // 초기화
     longPressTimer.current = setTimeout(() => {
       setShowDelete(true);
       isLongPressed.current = true; // 🌟 0.5초를 채우면 롱프레스로 인정!
-    }, 500);
+    }, 800);
 
     if (pointers.current.size === 1) {
       dragStart.current = { x: e.clientX, y: e.clientY, initX: pos.x, initY: pos.y };
@@ -217,13 +219,32 @@ export default function Home() {
     if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { myPlacedFurniture: updatedFurniture }, { merge: true });
   };
 
-  // 가구 위치/크기 업데이트
-  const handleFurnitureUpdate = async (instanceId, newX, newY, newScale) => {
-    const updatedFurniture = placedFurniture.map(item => 
-      item.instanceId === instanceId ? { ...item, x: newX, y: newY, scale: newScale } : item
-    );
-    setPlacedFurniture(updatedFurniture);
-    if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { myPlacedFurniture: updatedFurniture }, { merge: true });
+    const handleFurnitureUpdate = async (instanceId, newX, newY, newScale) => {
+    setPlacedFurniture((prev) => {
+      const updatedFurniture = prev.map(item => 
+        item.instanceId === instanceId ? { ...item, x: newX, y: newY, scale: newScale } : item
+      );
+      if (auth.currentUser) {
+        setDoc(doc(db, 'users', auth.currentUser.uid), { myPlacedFurniture: updatedFurniture }, { merge: true });
+      }
+      return updatedFurniture;
+    });
+  };
+
+  // 👇 handleFurnitureDelete(삭제) 함수 위에 이 새로운 함수를 추가해 주세요! 👇
+  const handleBringToFront = (instanceId) => {
+    setPlacedFurniture((prev) => {
+      // 선택한 가구를 배열에서 빼서 맨 끝(화면의 맨 위)으로 보냅니다.
+      const target = prev.find(item => item.instanceId === instanceId);
+      const others = prev.filter(item => item.instanceId !== instanceId);
+      const updated = [...others, target];
+      
+      // 순서가 바뀐 것을 파이어베이스에도 즉시 저장! (앱 껐다 켜도 순서 기억)
+      if (auth.currentUser) {
+        setDoc(doc(db, 'users', auth.currentUser.uid), { myPlacedFurniture: updated }, { merge: true });
+      }
+      return updated;
+    });
   };
 
   // 가구 삭제
@@ -292,6 +313,8 @@ export default function Home() {
                 item={item} 
                 onUpdate={handleFurnitureUpdate} 
                 onDelete={handleFurnitureDelete} 
+                // 👉 3. 새로 만든 순서 변경 함수를 여기에 연결합니다!
+                onBringToFront={handleBringToFront} 
               />
             ))}
 

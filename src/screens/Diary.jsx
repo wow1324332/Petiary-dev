@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Pencil, ArrowLeft, MoreVertical, Heart, X, Download, Loader2 } from 'lucide-react';
 // 👇 Firebase 기능 불러오기
-import { collection, addDoc, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query, orderBy, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, storage } from '../firebaseConfig'; 
@@ -215,7 +215,26 @@ export default function Diary() {
   const [detailCurrentImgIdx, setDetailCurrentImgIdx] = useState(0);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [commentInput, setCommentInput] = useState('');
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
+  // 👇 삭제 함수 추가 👇
+  const handleDeleteFeed = async () => {
+    if (!window.confirm("이 소중한 추억을 정말 삭제할까요? 🥺")) return;
+    
+    try {
+      const uid = auth.currentUser.uid;
+      // 1. 파이어스토어에서 해당 일기 삭제
+      await deleteDoc(doc(db, 'users', uid, 'diaries', selectedFeed.id));
+      
+      // 2. 화면에 보이는 리스트에서도 즉시 제거하고 피드 화면으로 돌아가기
+      setFeeds(feeds.filter(f => f.id !== selectedFeed.id));
+      setCurrentView('feed');
+      setIsMoreMenuOpen(false); 
+    } catch (error) {
+      console.error("삭제 실패:", error);
+      alert("삭제에 실패했습니다.");
+    }
+  };
   const handleAddComment = async () => {
     if (!commentInput.trim() || !auth.currentUser) return;
     try {
@@ -264,7 +283,34 @@ export default function Diary() {
                 </div>
                 <button className="flex items-center gap-1 text-gray-600 font-medium"><Heart size={22} className="active:scale-90 transition" /><span>{selectedFeed.likes}</span></button>
               </div>
-              <button className="text-gray-500"><MoreVertical size={22} /></button>
+              {/* 🌟 수정된 더보기 메뉴 영역 */}
+              <div className="relative">
+                <button 
+                  onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} 
+                  className="text-gray-500 p-1 active:bg-gray-100 rounded-full transition"
+                >
+                  <MoreVertical size={22} />
+                </button>
+                
+                {/* 팝업 메뉴 */}
+                {isMoreMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-28 bg-white border border-gray-100 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-[slideDown_0.2s_ease-out]">
+                    <button 
+                      onClick={() => { setIsMoreMenuOpen(false); alert("수정하기는 이미지 재구성 기능 작업 후 제공될 예정입니다! 🛠️"); }} 
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
+                    >
+                      수정하기
+                    </button>
+                    <div className="w-full h-[1px] bg-gray-100"></div>
+                    <button 
+                      onClick={handleDeleteFeed} 
+                      className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-bold"
+                    >
+                      삭제하기
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             
             {selectedFeed.location && <p className="text-xs text-brand font-bold mb-1">📍 {selectedFeed.location}</p>}

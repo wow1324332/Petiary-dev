@@ -18,6 +18,6 @@ export const doggyData = [
   {
     id: 4,
     name: "장모 훈트",
-    image: "/dog/장모훈트갈색.webp"
+    image: "/dog/장모닥스훈트갈색.webp"
   }
 ];

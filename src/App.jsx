@@ -5,7 +5,7 @@ import { auth } from './firebaseConfig';
 
 import LoginScreen from './screens/LoginScreen';
 import Home from './screens/Home';
-import Feed from './screens/Feed';
+import Feed from './screens/Diary';
 import SettingsScreen from './screens/SettingsScreen'; // 🌟 새로 추가된 부분
 import BottomNav from './components/BottomNav';
 
@@ -32,7 +32,7 @@ export default function App() {
           <div className="flex-1 overflow-y-auto bg-bglight pb-16">
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/feed" element={<Feed />} />
+              <Route path="/Diary" element={<Diary />} />
               <Route path="/settings" element={<SettingsScreen />} /> {/* 🌟 설정 경로 추가 */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

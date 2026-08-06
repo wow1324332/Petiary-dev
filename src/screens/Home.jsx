@@ -146,38 +146,6 @@ const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront, isLocked
   );
 };
 
-  return (
-    <div
-      onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}
-      onContextMenu={(e) => e.preventDefault()}
-      // 👉 수정: isLocked가 true면 터치를 무시(pointer-events-none)하도록 변경합니다!
-      className={`absolute top-1/2 left-1/2 select-none z-0 ${
-        isLocked ? 'pointer-events-none' : 'touch-none cursor-grab active:cursor-grabbing pointer-events-auto'
-      }`}
-      style={{ 
-        transform: `translate3d(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px), 0)`,
-        WebkitTouchCallout: 'none'
-      }}
-    >
-      {/* 🌟 5. 이미지를 감싸는 안쪽 상자에만 '크기(scale)'를 적용합니다. */}
-      <div style={{ transform: `scale(${scale})` }}>
-        <img src={item.image} alt="가구" draggable={false} className="w-48 object-contain drop-shadow-md relative pointer-events-none" />
-      </div>
-      
-      {/* 🌟 6. 삭제 버튼은 안쪽 상자 밖에 있으므로, 가구가 커져도 얘는 원래 크기를 유지합니다! */}
-      {showDelete && (
-        <button
-          onPointerDown={(e) => e.stopPropagation()} 
-          onClick={(e) => { e.stopPropagation(); onDelete(item.instanceId); }}
-          className="absolute -top-3 -right-3 w-8 h-8 bg-white text-red-500 rounded-full flex items-center justify-center shadow-lg border-2 border-red-100 z-50 transition active:scale-90"
-        >
-          <X size={18} strokeWidth={3} />
-        </button>
-      )}
-    </div>
-  );
-};
-
 // =============================================================================
 // 🌟 홈 화면 메인 컴포넌트
 // =============================================================================

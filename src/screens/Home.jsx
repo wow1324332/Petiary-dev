@@ -352,7 +352,7 @@ export default function Home() {
       onContextMenu={(e) => e.preventDefault()}>
 
       {toast && (
-        <div className={`absolute top-20 left-1/2 -translate-x-1/2 z-[60] backdrop-blur-md px-6 py-3 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border font-bold text-sm flex items-center whitespace-nowrap animate-[slideDown_0.3s_ease-out] ${toast.style}`}>
+        <div className={`absolute top-20 left-1/2 -translate-x-1/2 z-[60] backdrop-blur-xl px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] border font-bold text-sm flex items-center whitespace-nowrap animate-[slideDown_0.3s_ease-out] ${toast.style}`}>
           {toast.message}
         </div>
       )}

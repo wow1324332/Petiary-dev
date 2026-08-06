@@ -161,7 +161,6 @@ export default function Diary() {
 
     return (
       <div className="flex flex-col h-full bg-white relative">
-        {/* 업로드 로딩 오버레이 */}
         {isUploading && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
             <Loader2 className="animate-spin text-brand w-12 h-12 mb-4" />
@@ -175,8 +174,7 @@ export default function Diary() {
           <label className="text-brand font-bold cursor-pointer">재선택<input type="file" multiple accept="image/*" className="hidden" onChange={handleFileSelect} /></label>
         </div>
 
-        <div className="flex-1 overflow-y-auto pb-20">
-          {/* 이미지 미리보기 슬라이더 */}
+        <div className="flex-1 overflow-y-auto flex flex-col pb-4 bg-white">
           <div className="relative aspect-square bg-gray-100 flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden" onScroll={(e) => setWriteCurrentImgIdx(Math.round(e.target.scrollLeft / e.target.clientWidth))}>
             {writeForm.previewUrls.map((img, idx) => (
               <img key={idx} src={img} alt={`첨부 ${idx}`} className="w-full h-full object-cover flex-shrink-0 snap-center" />
@@ -198,12 +196,12 @@ export default function Diary() {
               <span className="absolute bottom-3 right-3 text-xs text-gray-400">{writeForm.content.length} / 200</span>
             </div>
           </div>
-        </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t">
-          <button onClick={handleWriteSubmit} disabled={isUploading} className="w-full bg-brand text-white font-bold py-3.5 rounded-xl shadow-md active:scale-95 transition disabled:opacity-50">
-            작성 완료
-          </button>
+          <div className="mt-auto pt-6 px-4">
+            <button onClick={handleWriteSubmit} disabled={isUploading} className="w-full bg-brand text-white font-bold py-3.5 rounded-xl shadow-md active:scale-95 transition disabled:opacity-50">
+              작성 완료
+            </button>
+          </div>
         </div>
       </div>
     );

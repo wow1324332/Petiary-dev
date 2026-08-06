@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings, X, Loader2, Pencil, Lock, Unlock } from 'lucide-react'; 
+import { Settings, X, Loader2, Pencil, Lock, Unlock, PawPrint } from 'lucide-react'; 
 import { doggyData } from '../data/doggyData';
 import { backgroundData } from '../data/backgroundData';
 import { furnitureData } from '../data/furnitureData'; 
@@ -152,8 +152,8 @@ const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront, isLocked
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true); 
   const [isModalReady, setIsModalReady] = useState(false);
-
   const [isLocked, setIsLocked] = useState(true);
+  const [isTopMenuOpen, setIsTopMenuOpen] = useState(false);
 
   const scrollRef = useRef(null);
 
@@ -327,17 +327,29 @@ export default function Home() {
     <div className="flex flex-col h-full relative overflow-hidden bg-gray-100"
       onContextMenu={(e) => e.preventDefault()}>
       
-      {/* 🌟 수정된 상단 버튼 영역 (자물쇠 + 설정) */}
-      <div className="absolute top-0 right-0 p-5 z-40 flex items-center gap-3">
+      {/* 🌟 좌측 상단 펫 메뉴 (발바닥 버튼) */}
+      <div className="absolute top-6 left-6 z-40 flex flex-col items-center gap-3">
         <button 
-          onClick={() => setIsLocked(!isLocked)} 
-          className={`transition block active:scale-95 bg-white/50 backdrop-blur-sm p-2 rounded-full shadow-sm ${isLocked ? 'text-brand' : 'text-gray-500'}`}
+          onClick={() => setIsTopMenuOpen(!isTopMenuOpen)} 
+          className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md border border-white/50 backdrop-blur-lg transition-all duration-300 active:scale-95 ${isTopMenuOpen ? 'bg-brand text-white' : 'bg-white/70 text-gray-700'}`}
         >
-          {isLocked ? <Lock size={24} /> : <Unlock size={24} />}
+          <PawPrint size={24} />
         </button>
-        <Link to="/settings" className="text-gray-600 hover:text-brand transition block active:scale-95 bg-white/50 backdrop-blur-sm p-2 rounded-full shadow-sm">
-          <Settings size={24} />
-        </Link>
+        
+        {/* 스르륵 나타나는 하위 버튼들 */}
+        {isTopMenuOpen && (
+          <div className="flex flex-col gap-3 origin-top animate-[slideUp_0.2s_ease-out]">
+            <button 
+              onClick={() => setIsLocked(!isLocked)} 
+              className={`w-10 h-10 flex items-center justify-center transition-all active:scale-95 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/40 ${isLocked ? 'text-brand' : 'text-gray-500'}`}
+            >
+              {isLocked ? <Lock size={18} /> : <Unlock size={18} />}
+            </button>
+            <Link to="/settings" className="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-brand transition-all active:scale-95 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/40">
+              <Settings size={18} />
+            </Link>
+          </div>
+        )}
       </div>
 
       {isLoading ? (

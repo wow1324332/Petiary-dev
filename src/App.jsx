@@ -5,7 +5,7 @@ import { auth } from './firebaseConfig';
 
 import LoginScreen from './screens/LoginScreen';
 import Home from './screens/Home';
-import Feed from './screens/Diary';
+import Diary from './screens/Diary';
 import SettingsScreen from './screens/SettingsScreen'; // 🌟 새로 추가된 부분
 import BottomNav from './components/BottomNav';
 

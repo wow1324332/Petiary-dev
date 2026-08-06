@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings, X, Loader2, Pencil } from 'lucide-react'; 
+import { Settings, X, Loader2, Pencil, Lock, Unlock } from 'lucide-react'; 
 import { doggyData } from '../data/doggyData';
 import { backgroundData } from '../data/backgroundData';
 import { furnitureData } from '../data/furnitureData'; 
@@ -11,7 +11,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 // =============================================================================
 // 🌟 가구 컴포넌트 (롱프레스 유지, 버튼 크기 고정, 미세 떨림 방지 적용)
 // =============================================================================
-const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront }) => {
+const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront, isLocked }) => {
   const [pos, setPos] = useState({ x: item.x, y: item.y });
   const [scale, setScale] = useState(item.scale || 1);
   const [showDelete, setShowDelete] = useState(false); 
@@ -108,8 +108,10 @@ const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront }) => {
     <div
       onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}
       onContextMenu={(e) => e.preventDefault()}
-      className="absolute top-1/2 left-1/2 touch-none select-none cursor-grab active:cursor-grabbing z-0"
-      // 🌟 4. 제일 바깥 상자에는 '위치(translate)'만 적용합니다.
+      // 👉 수정: isLocked가 true면 터치를 무시(pointer-events-none)하도록 변경합니다!
+      className={`absolute top-1/2 left-1/2 select-none z-0 ${
+        isLocked ? 'pointer-events-none' : 'touch-none cursor-grab active:cursor-grabbing pointer-events-auto'
+      }`}
       style={{ 
         transform: `translate3d(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px), 0)`,
         WebkitTouchCallout: 'none'
@@ -140,6 +142,8 @@ const DraggableFurniture = ({ item, onUpdate, onDelete, onBringToFront }) => {
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true); 
   const [isModalReady, setIsModalReady] = useState(false);
+
+  const [isLocked, setIsLocked] = useState(true);
 
   const scrollRef = useRef(null);
   
@@ -290,8 +294,16 @@ export default function Home() {
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-gray-100"
       onContextMenu={(e) => e.preventDefault()}>
-      <div className="absolute top-0 right-0 p-5 z-40">
-        <Link to="/settings" className="text-gray-600 hover:text-brand transition block active:scale-95 bg-white/50 backdrop-blur-sm p-2 rounded-full">
+      
+      {/* 🌟 수정된 상단 버튼 영역 (자물쇠 + 설정) */}
+      <div className="absolute top-0 right-0 p-5 z-40 flex items-center gap-3">
+        <button 
+          onClick={() => setIsLocked(!isLocked)} 
+          className={`transition block active:scale-95 bg-white/50 backdrop-blur-sm p-2 rounded-full shadow-sm ${isLocked ? 'text-brand' : 'text-gray-500'}`}
+        >
+          {isLocked ? <Lock size={24} /> : <Unlock size={24} />}
+        </button>
+        <Link to="/settings" className="text-gray-600 hover:text-brand transition block active:scale-95 bg-white/50 backdrop-blur-sm p-2 rounded-full shadow-sm">
           <Settings size={24} />
         </Link>
       </div>
@@ -313,16 +325,17 @@ export default function Home() {
                 item={item} 
                 onUpdate={handleFurnitureUpdate} 
                 onDelete={handleFurnitureDelete} 
-                // 👉 3. 새로 만든 순서 변경 함수를 여기에 연결합니다!
-                onBringToFront={handleBringToFront} 
+                onBringToFront={handleBringToFront}
+                isLocked={isLocked} // 👉 🌟 잠금 상태 전달
               />
             ))}
 
             {/* 강아지 렌더링 */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="pointer-events-auto touch-none relative z-10" style={{ transform: `translate3d(${dogPosition.x}px, ${dogPosition.y}px, 0)` }}>
+              {/* 👉 🌟 강아지에게도 isLocked 상태에 따라 pointer-events-none 적용 */}
+              <div className={`relative z-10 ${isLocked ? 'pointer-events-none' : 'pointer-events-auto touch-none'}`} style={{ transform: `translate3d(${dogPosition.x}px, ${dogPosition.y}px, 0)` }}>
                 <div onPointerDown={handleDogPointerDown} onPointerMove={handleDogPointerMove} onPointerUp={handleDogPointerUp} onPointerCancel={handleDogPointerUp} className="cursor-grab active:cursor-grabbing rounded-full">
-                  <img src={selectedDog.image} alt={selectedDog.name} draggable={false} className="w-44 h-44 object-contain drop-shadow-xl" />
+                  <img src={selectedDog.image} alt={selectedDog.name} draggable={false} className="w-44 h-44 object-contain drop-shadow-xl pointer-events-none" />
                 </div>
               </div>
             </div>

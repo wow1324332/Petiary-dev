@@ -26,5 +26,30 @@ export const furnitureData = [
     id: 5,
     name: "흰커튼 일반",
     image: "/furniture/furniture-커튼-흰색-늘어짐.png"
+  },
+  {
+    id: 6,
+    name: "꿈나라쇼파1",
+    image: "/furniture/꿈나라쇼파1.png"
+  },
+  {
+    id: 7,
+    name: "꿈나라쇼파2",
+    image: "/furniture/꿈나라쇼파2.png"
+  },
+  {
+    id: 8,
+    name: "2인가죽쇼파",
+    image: "/furniture/2인용가죽쇼파.png"
+  },
+  {
+    id: 9,
+    name: "1인가죽쇼파",
+    image: "/furniture/1인용가죽쇼파.png"
+  },
+  {
+    id: 10,
+    name: "모던 거실탁자",
+    image: "/furniture/거실탁자1.png"
   }
 ];

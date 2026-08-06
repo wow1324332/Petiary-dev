@@ -7,6 +7,7 @@ import { furnitureData } from '../data/furnitureData';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig'; 
 import { onAuthStateChanged } from 'firebase/auth';  
+import { toastMessages } from '../data/toastData';
 
 // =============================================================================
 // 🌟 가구 컴포넌트 (PC 마우스 휠 확대/축소 기능 추가 완료!)
@@ -155,6 +156,17 @@ export default function Home() {
   const [isLocked, setIsLocked] = useState(true);
   const [isTopMenuOpen, setIsTopMenuOpen] = useState(false);
 
+  // 👇 1. 단순 문자열에서 객체를 담을 수 있도록 초기값을 null로 변경
+  const [toast, setToast] = useState(null); 
+  const toastTimer = useRef(null);
+
+  // 👇 2. msg 대신 toastObj(객체)를 받아서 통째로 저장
+  const showToast = (toastObj) => {
+    setToast(toastObj);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2500); 
+  };
+
   const scrollRef = useRef(null);
 
   const isDraggingBg = useRef(false);
@@ -249,7 +261,7 @@ export default function Home() {
   const handleFurnitureSelect = async (furnItem) => {
     if (!isModalReady) return; 
     if (isLocked) {
-      alert("잠금을 해제하세요!");
+      showToast(toastMessages.lockedFurn); // 👉 alert 대신 교체!
       return; 
     }
     const newFurniture = { instanceId: Date.now(), baseId: furnItem.id, image: furnItem.image, x: 0, y: 0, scale: 1 };
@@ -297,7 +309,7 @@ export default function Home() {
   const handleDogSelect = async (dog) => {
     if (!isModalReady) return; 
     if (isLocked) {
-      alert("잠금을 해제하세요!");
+      showToast(toastMessages.lockedDog); // 👉 alert 대신 교체!
       return; 
     }
     setSelectedDog(dog); setIsDogModalOpen(false);
@@ -307,7 +319,7 @@ export default function Home() {
   const handleBgSelect = async (bg) => {
     if (!isModalReady) return; 
     if (isLocked) {
-      alert("잠금을 해제하세요!");
+      showToast(toastMessages.lockedBg); // 👉 alert 대신 교체!
       return; 
     }
     setSelectedBg(bg); setIsBgModalOpen(false);
@@ -338,6 +350,12 @@ export default function Home() {
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-gray-100"
       onContextMenu={(e) => e.preventDefault()}>
+
+      {toast && (
+        <div className={`absolute top-20 left-1/2 -translate-x-1/2 z-[60] backdrop-blur-md px-6 py-3 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border font-bold text-sm flex items-center whitespace-nowrap animate-[slideDown_0.3s_ease-out] ${toast.style}`}>
+          {toast.message}
+        </div>
+      )}
       
       {/* 🌟 좌측 상단 펫 메뉴 (발바닥 버튼) */}
       <div className="absolute top-6 left-6 z-40 flex flex-col items-center gap-3">

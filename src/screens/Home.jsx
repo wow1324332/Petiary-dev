@@ -340,7 +340,7 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-4">
               {doggyData.map((dog) => (
                 <button key={dog.id} onClick={() => handleDogSelect(dog)} className={`flex flex-col items-center p-4 rounded-2xl border-2 transition ${isModalReady ? 'active:scale-95' : 'opacity-90'} ${selectedDog.id === dog.id ? 'border-brand bg-brand/5' : 'border-gray-100 hover:bg-gray-50'}`}>
-                  <img src={dog.image} alt={dog.name} className="w-16 h-16 object-contain mb-3 drop-shadow-sm" pointer-events-none/>
+                  <img src={dog.image} alt={dog.name} className="w-16 h-16 object-contain mb-3 drop-shadow-sm pointer-events-none" />
                   <span className="text-sm font-bold text-gray-700">{dog.name}</span>
                 </button>
               ))}

@@ -5,8 +5,9 @@ import { auth } from './firebaseConfig';
 
 import LoginScreen from './screens/LoginScreen';
 import Home from './screens/Home';
-import Diary from './screens/Diary';
-import SettingsScreen from './screens/SettingsScreen'; // 🌟 새로 추가된 부분
+// 👇 이름과 경로를 완벽하게 맞췄습니다!
+import Diary from './screens/Diary'; 
+import SettingsScreen from './screens/SettingsScreen'; 
 import BottomNav from './components/BottomNav';
 
 export default function App() {
@@ -32,8 +33,9 @@ export default function App() {
           <div className="flex-1 overflow-y-auto bg-bglight pb-16">
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/Diary" element={<Diary />} />
-              <Route path="/settings" element={<SettingsScreen />} /> {/* 🌟 설정 경로 추가 */}
+              {/* 👇 소문자 /diary 로 주소 통일, 컴포넌트 이름도 정확히 매칭! */}
+              <Route path="/diary" element={<Diary />} />
+              <Route path="/settings" element={<SettingsScreen />} /> 
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>

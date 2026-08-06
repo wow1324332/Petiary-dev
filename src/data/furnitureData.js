@@ -21,5 +21,10 @@ export const furnitureData = [
     id: 4,
     name: "흰커튼 펄럭임",
     image: "/furniture/furniture-커튼-흰색-펄럭임.png"
+  },
+  {
+    id: 5,
+    name: "흰커튼 일반",
+    image: "/furniture/furniture-커튼-흰색-늘어짐.png"
   }
 ];

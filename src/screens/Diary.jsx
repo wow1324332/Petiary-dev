@@ -328,13 +328,20 @@ const renderWrite = () => {
     if (!selectedFeed) return null;
 
     return (
-      <div className="flex flex-col h-full bg-white relative" style={{ animation: 'feedScaleUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards' }} >
-
-        <style>
+      <div 
+        className="flex flex-col h-full bg-white relative"
+        // 👇 이름과 시간, 그리고 기준점(transformOrigin)을 추가했습니다.
+        style={{ 
+          animation: 'smoothSlideUp 0.4s cubic-bezier(0.1, 0.9, 0.2, 1) forwards',
+          transformOrigin: 'bottom center'
+        }}
+      >
+         <style>
           {`
-            @keyframes feedScaleUp {
-              0% { opacity: 0; transform: scale(0.9); }
-              100% { opacity: 1; transform: scale(1); }
+            @keyframes smoothSlideUp {
+              /* 👇 아래로 30px 내려가 있다가(translateY) 위로 스윽 올라오며 커집니다 */
+              0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+              100% { opacity: 1; transform: translateY(0) scale(1); }
             }
           `}
         </style>

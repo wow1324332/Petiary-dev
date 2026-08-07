@@ -43,7 +43,7 @@ export default function Diary() {
   const renderFeedList = () => (
     <div 
       className="flex flex-col h-full relative" 
-      style={{ backgroundImage: "url('/bg-feed.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+      style={{ backgroundImage: "url('/bg/bg-feed.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
       {/* 상단 탭 (배경화면 위에서도 글씨가 잘 보이도록 반투명한 하얀색 배경을 깔아주었습니다) */}
       <div className="flex justify-center border-b border-gray-100 py-3 bg-white/80 backdrop-blur-sm">

@@ -8,6 +8,7 @@ import { auth, db, storage } from '../firebaseConfig';
 
 export default function Diary() {
   const [currentView, setCurrentView] = useState('feed');
+  const [isDetailClosing, setIsDetailClosing] = useState(false);
   const [activeTab, setActiveTab] = useState('feed'); 
   const [isLoading, setIsLoading] = useState(true); // 처음 데이터 불러올 때 로딩
   const [isUploading, setIsUploading] = useState(false); // 글 작성 시 로딩
@@ -324,30 +325,46 @@ const renderWrite = () => {
     }
   };
 
-  const renderDetail = () => {
+const renderDetail = () => {
     if (!selectedFeed) return null;
+
+    // 🌟 뒤로가기 버튼을 눌렀을 때 실행되는 똑똑한 함수
+    const handleBack = () => {
+      setIsDetailClosing(true); // 1. 닫히는 애니메이션 시작!
+      
+      setTimeout(() => {
+        setCurrentView('feed'); // 2. 0.3초 뒤에 피드 화면으로 진짜 이동
+        setIsDetailClosing(false); // 3. 다음 번 열릴 때를 위해 상태 초기화
+      }, 300); // 300밀리초(0.3초) 대기
+    };
 
     return (
       <div 
         className="flex flex-col h-full bg-white relative"
-        // 👇 이름과 시간, 그리고 기준점(transformOrigin)을 추가했습니다.
         style={{ 
-          animation: 'smoothSlideUp 0.4s cubic-bezier(0.1, 0.9, 0.2, 1) forwards',
-          transformOrigin: 'bottom center'
+          // 🌟 상태에 따라 열릴 때(slideInRight)와 닫힐 때(slideOutRight) 애니메이션 분기 처리
+          animation: isDetailClosing 
+            ? 'slideOutRight 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards' 
+            : 'slideInRight 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards'
         }}
       >
-         <style>
+        {/* 🌟 좌우 슬라이드 애니메이션 정의 */}
+        <style>
           {`
-            @keyframes smoothSlideUp {
-              /* 👇 아래로 30px 내려가 있다가(translateY) 위로 스윽 올라오며 커집니다 */
-              0% { opacity: 0; transform: translateY(30px) scale(0.95); }
-              100% { opacity: 1; transform: translateY(0) scale(1); }
+            @keyframes slideInRight {
+              0% { transform: translateX(100%); }
+              100% { transform: translateX(0); }
+            }
+            @keyframes slideOutRight {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(100%); }
             }
           `}
         </style>
-        
+
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <button onClick={() => setCurrentView('feed')} className="text-gray-800"><ArrowLeft size={24} /></button>
+          {/* 🌟 뒤로가기 버튼에 방금 만든 handleBack 함수를 연결합니다 */}
+          <button onClick={handleBack} className="text-gray-800"><ArrowLeft size={24} /></button>
           <span className="font-bold text-gray-700">{selectedFeed.date}</span>
           <div className="w-6" />
         </div>
@@ -368,31 +385,16 @@ const renderWrite = () => {
                 </div>
                 <button className="flex items-center gap-1 text-gray-600 font-medium"><Heart size={22} className="active:scale-90 transition" /><span>{selectedFeed.likes}</span></button>
               </div>
-              {/* 🌟 수정된 더보기 메뉴 영역 */}
+              
               <div className="relative">
-                <button 
-                  onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} 
-                  className="text-gray-500 p-1 active:bg-gray-100 rounded-full transition"
-                >
+                <button onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} className="text-gray-500 p-1 active:bg-gray-100 rounded-full transition">
                   <MoreVertical size={22} />
                 </button>
-                
-                {/* 팝업 메뉴 */}
                 {isMoreMenuOpen && (
                   <div className="absolute right-0 mt-2 w-28 bg-white border border-gray-100 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-[slideDown_0.2s_ease-out]">
-                    <button 
-                      onClick={() => { setIsMoreMenuOpen(false); alert("수정하기는 이미지 재구성 기능 작업 후 제공될 예정입니다! 🛠️"); }} 
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
-                    >
-                      수정하기
-                    </button>
+                    <button onClick={() => { setIsMoreMenuOpen(false); alert("수정하기는 이미지 재구성 기능 작업 후 제공될 예정입니다! 🛠️"); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium">수정하기</button>
                     <div className="w-full h-[1px] bg-gray-100"></div>
-                    <button 
-                      onClick={handleDeleteFeed} 
-                      className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-bold"
-                    >
-                      삭제하기
-                    </button>
+                    <button onClick={handleDeleteFeed} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-bold">삭제하기</button>
                   </div>
                 )}
               </div>
@@ -419,7 +421,6 @@ const renderWrite = () => {
           </div>
         </div>
 
-        {/* 원본 퀄리티 이미지 뷰어 */}
         {isViewerOpen && (
           <div className="fixed inset-0 z-50 bg-black flex flex-col">
             <div className="flex justify-end p-4 z-50 absolute top-0 right-0 w-full bg-gradient-to-b from-black/50 to-transparent">

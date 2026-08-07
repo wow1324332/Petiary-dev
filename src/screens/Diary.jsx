@@ -287,13 +287,12 @@ const renderWrite = () => {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
 
-// 🌟 1. 메뉴에서 삭제 버튼을 누르면 커스텀 팝업 열기
   const handleDeleteClick = () => {
     setIsMoreMenuOpen(false); // 더보기 메뉴는 닫고
-    setIsDeletePopupOpen(true); // 예쁜 팝업 열기
+    setIsDeletePopupOpen(true); // 팝업 띄우기!
   };
 
-  // 🌟 2. 팝업에서 '삭제하기'를 눌렀을 때 진짜로 삭제하는 기능
+  // 🌟 2. 팝업에서 '진짜 삭제'를 눌렀을 때 실행되는 기능
   const executeDelete = async () => {
     try {
       const uid = auth.currentUser.uid;
@@ -360,19 +359,6 @@ const renderDetail = () => {
           boxShadow: '-2px 0 10px rgba(0,0,0,0.05)'
         }}
       >
-        <style>
-          {`
-            /* 🌟 translateX 대신 translate3d를 쓰면 스마트폰 GPU가 일을 해서 훨씬 부드럽습니다 */
-            @keyframes slideInRight {
-              0% { transform: translate3d(100%, 0, 0); }
-              100% { transform: translate3d(0, 0, 0); }
-            }
-            @keyframes slideOutRight {
-              0% { transform: translate3d(0, 0, 0); }
-              100% { transform: translate3d(100%, 0, 0); }
-            }
-          `}
-        </style>
 
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           {/* 🌟 닫히는 중일 때는 버튼을 두 번 못 누르게 disabled 추가 */}
@@ -406,7 +392,7 @@ const renderDetail = () => {
                   <div className="absolute right-0 mt-2 w-28 bg-white border border-gray-100 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-[slideDown_0.2s_ease-out]">
                     <button onClick={() => { setIsMoreMenuOpen(false); alert("수정하기는 이미지 재구성 기능 작업 후 제공될 예정입니다! 🛠️"); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium">수정하기</button>
                     <div className="w-full h-[1px] bg-gray-100"></div>
-                    <button onClick={handleDeleteFeed} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-bold">삭제하기</button>
+                    <button onClick={handleDeleteClick} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-bold">삭제하기</button>
                   </div>
                 )}
               </div>
@@ -451,9 +437,9 @@ const renderDetail = () => {
         )}
         {/* 사진 뷰어 끝 */}
 
-        {/* 🌟 여기에 커스텀 삭제 팝업 UI가 추가됩니다! 🌟 */}
+        {/* 🌟 여기에 예쁜 커스텀 삭제 팝업이 들어갑니다 🌟 */}
         {isDeletePopupOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
             <div className="bg-white rounded-2xl p-6 w-[80%] max-w-sm shadow-2xl">
               <h3 className="text-lg font-bold text-gray-800 mb-2">추억 삭제</h3>
               <p className="text-sm text-gray-600 mb-6 leading-relaxed">
@@ -476,6 +462,23 @@ const renderDetail = () => {
   };
 return (
     <div className="w-full h-full overflow-hidden bg-gray-50 relative">
+
+      {/* 🌟 흰화면 방지: 애니메이션이 리셋되지 않게 스타일 태그를 가장 안전한 바닥으로 옮겼습니다! */}
+      <style>
+        {`
+          @keyframes slideInRight {
+            0% { transform: translate3d(100%, 0, 0); }
+            100% { transform: translate3d(0, 0, 0); }
+          }
+          @keyframes slideOutRight {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(100%, 0, 0); }
+          }
+        `}
+      </style>
+
+      {/* 1. 피드 화면은 지우지 않고 항상 바닥에 깔아둡니다 */}
+      {renderFeedList()}
       
       {/* 1. 피드 화면은 지우지 않고 항상 바닥에 깔아둡니다 */}
       {renderFeedList()}

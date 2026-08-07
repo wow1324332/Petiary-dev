@@ -46,7 +46,7 @@ export default function Diary() {
       {/* 🌟 배경 이미지와 하얀색 반투명 필터 (오버레이) */}
       <div 
         className="absolute inset-0 z-0"
-        style={{ backgroundImage: "url('/bg-feed.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+        style={{ backgroundImage: "url('/bg/bg-feed.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         {/* bg-white/70 으로 하얀색을 70% 덮어 씌워서 배경을 연하게 만듭니다. 
             (더 연하게 하려면 80, 진하게 하려면 50 등으로 숫자를 조절할 수 있습니다) */}

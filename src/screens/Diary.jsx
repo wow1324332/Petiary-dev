@@ -285,25 +285,36 @@ const renderWrite = () => {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [commentInput, setCommentInput] = useState('');
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
 
-  // 👇 삭제 함수 추가 👇
-  const handleDeleteFeed = async () => {
-    if (!window.confirm("이 소중한 추억을 정말 삭제할까요? 🥺")) return;
-    
+// 🌟 1. 메뉴에서 삭제 버튼을 누르면 커스텀 팝업 열기
+  const handleDeleteClick = () => {
+    setIsMoreMenuOpen(false); // 더보기 메뉴는 닫고
+    setIsDeletePopupOpen(true); // 예쁜 팝업 열기
+  };
+
+  // 🌟 2. 팝업에서 '삭제하기'를 눌렀을 때 진짜로 삭제하는 기능
+  const executeDelete = async () => {
     try {
       const uid = auth.currentUser.uid;
-      // 1. 파이어스토어에서 해당 일기 삭제
       await deleteDoc(doc(db, 'users', uid, 'diaries', selectedFeed.id));
-      
-      // 2. 화면에 보이는 리스트에서도 즉시 제거하고 피드 화면으로 돌아가기
       setFeeds(feeds.filter(f => f.id !== selectedFeed.id));
-      setCurrentView('feed');
-      setIsMoreMenuOpen(false); 
+      
+      setIsDeletePopupOpen(false); // 팝업 닫기
+      
+      // 삭제 후 상세 화면이 스르륵 닫히도록 애니메이션 처리
+      setIsDetailClosing(true);
+      setTimeout(() => {
+        setCurrentView('feed');
+        setIsDetailClosing(false);
+      }, 300);
+      
     } catch (error) {
       console.error("삭제 실패:", error);
       alert("삭제에 실패했습니다.");
     }
   };
+  
   const handleAddComment = async () => {
     if (!commentInput.trim() || !auth.currentUser) return;
     try {
@@ -422,8 +433,9 @@ const renderDetail = () => {
           </div>
         </div>
 
+        {/* 사진 뷰어 시작 */}
         {isViewerOpen && (
-          <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          <div className="fixed inset-0 z-[100] bg-black flex flex-col">
             <div className="flex justify-end p-4 z-50 absolute top-0 right-0 w-full bg-gradient-to-b from-black/50 to-transparent">
               <button onClick={() => setIsViewerOpen(false)} className="text-white p-2"><X size={28} /></button>
             </div>
@@ -432,14 +444,33 @@ const renderDetail = () => {
               {selectedFeed.images.map((img, idx) => (
                 <div key={idx} className="w-full h-full flex-shrink-0 snap-center flex justify-center items-center relative">
                   <img src={img} alt={`뷰어 ${idx}`} className="max-w-full max-h-full object-contain" />
-                  <a href={img} target="_blank" rel="noopener noreferrer" download className="absolute bottom-8 right-6 bg-white/20 backdrop-blur-md p-3 rounded-full text-white hover:bg-white/40 transition">
-                    <Download size={24} />
-                  </a>
                 </div>
               ))}
             </div>
           </div>
         )}
+        {/* 사진 뷰어 끝 */}
+
+        {/* 🌟 여기에 커스텀 삭제 팝업 UI가 추가됩니다! 🌟 */}
+        {isDeletePopupOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+            <div className="bg-white rounded-2xl p-6 w-[80%] max-w-sm shadow-2xl">
+              <h3 className="text-lg font-bold text-gray-800 mb-2">추억 삭제</h3>
+              <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                이 소중한 추억을 정말 삭제할까요?<br />삭제된 일기는 복구할 수 없습니다. 🥺
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setIsDeletePopupOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl active:bg-gray-200 transition">
+                  취소
+                </button>
+                <button onClick={executeDelete} className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl active:bg-red-600 transition shadow-md shadow-red-500/20">
+                  삭제하기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   };

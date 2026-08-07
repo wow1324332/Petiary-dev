@@ -153,6 +153,8 @@ export default function Diary() {
     }
   };
 
+const [openSelector, setOpenSelector] = useState(null);
+
   const renderWrite = () => {
     const currentYear = today.getFullYear();
     const years = Array.from({length: currentYear - 1950 + 1}, (_, i) => currentYear - i);
@@ -161,6 +163,7 @@ export default function Diary() {
 
     return (
       <div className="flex flex-col h-full bg-white relative">
+        {/* 업로드 로딩 오버레이 */}
         {isUploading && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
             <Loader2 className="animate-spin text-brand w-12 h-12 mb-4" />
@@ -184,20 +187,78 @@ export default function Diary() {
             {writeForm.previewUrls.map((_, idx) => <div key={idx} className={`w-2 h-2 rounded-full ${writeCurrentImgIdx === idx ? 'bg-brand' : 'bg-gray-300'}`} />)}
           </div>
 
-          <div className="px-4 space-y-4">
-            <div className="flex gap-2">
-              <select value={writeForm.year} onChange={e=>setWriteForm({...writeForm, year: e.target.value})} className="border rounded-lg p-2 bg-gray-50 flex-1">{years.map(y => <option key={y} value={y}>{y}년</option>)}</select>
-              <select value={writeForm.month} onChange={e=>setWriteForm({...writeForm, month: e.target.value})} className="border rounded-lg p-2 bg-gray-50 flex-1">{months.map(m => <option key={m} value={m}>{m}월</option>)}</select>
-              <select value={writeForm.day} onChange={e=>setWriteForm({...writeForm, day: e.target.value})} className="border rounded-lg p-2 bg-gray-50 flex-1">{days.map(d => <option key={d} value={d}>{d}일</option>)}</select>
+          <div className="px-4 space-y-4 relative">
+            
+            {/* 🌟 셀렉터 외부 클릭 시 닫히게 하는 투명 배경 */}
+            {openSelector && (
+              <div className="fixed inset-0 z-40" onClick={() => setOpenSelector(null)}></div>
+            )}
+            
+            {/* 🌟 커스텀 디자인된 날짜 셀렉터 영역 */}
+            <div className="flex gap-2 relative z-50">
+              
+              {/* 년도 셀렉터 */}
+              <div className="relative flex-1">
+                <button type="button" onClick={() => setOpenSelector(openSelector === 'year' ? null : 'year')} className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 flex items-center justify-between focus:outline-none focus:border-brand active:bg-gray-100 transition">
+                  <span className="text-gray-700">{writeForm.year}년</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 transition-transform duration-200" style={{ transform: openSelector === 'year' ? 'rotate(180deg)' : 'none' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                {openSelector === 'year' && (
+                  <div className="absolute top-full left-0 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-100 rounded-xl shadow-lg py-1 animate-[slideDown_0.1s_ease-out] [&::-webkit-scrollbar]:hidden">
+                    {years.map(y => (
+                      <div key={y} onClick={() => { setWriteForm({...writeForm, year: y}); setOpenSelector(null); }} className="px-4 py-2.5 text-sm text-gray-700 hover:bg-brand/10 hover:text-brand cursor-pointer transition">
+                        {y}년
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 월 셀렉터 */}
+              <div className="relative flex-1">
+                <button type="button" onClick={() => setOpenSelector(openSelector === 'month' ? null : 'month')} className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 flex items-center justify-between focus:outline-none focus:border-brand active:bg-gray-100 transition">
+                  <span className="text-gray-700">{writeForm.month}월</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 transition-transform duration-200" style={{ transform: openSelector === 'month' ? 'rotate(180deg)' : 'none' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                {openSelector === 'month' && (
+                  <div className="absolute top-full left-0 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-100 rounded-xl shadow-lg py-1 animate-[slideDown_0.1s_ease-out] [&::-webkit-scrollbar]:hidden">
+                    {months.map(m => (
+                      <div key={m} onClick={() => { setWriteForm({...writeForm, month: m}); setOpenSelector(null); }} className="px-4 py-2.5 text-sm text-gray-700 hover:bg-brand/10 hover:text-brand cursor-pointer transition">
+                        {m}월
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 일 셀렉터 */}
+              <div className="relative flex-1">
+                <button type="button" onClick={() => setOpenSelector(openSelector === 'day' ? null : 'day')} className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 flex items-center justify-between focus:outline-none focus:border-brand active:bg-gray-100 transition">
+                  <span className="text-gray-700">{writeForm.day}일</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 transition-transform duration-200" style={{ transform: openSelector === 'day' ? 'rotate(180deg)' : 'none' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                {openSelector === 'day' && (
+                  <div className="absolute top-full left-0 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-100 rounded-xl shadow-lg py-1 animate-[slideDown_0.1s_ease-out] [&::-webkit-scrollbar]:hidden">
+                    {days.map(d => (
+                      <div key={d} onClick={() => { setWriteForm({...writeForm, day: d}); setOpenSelector(null); }} className="px-4 py-2.5 text-sm text-gray-700 hover:bg-brand/10 hover:text-brand cursor-pointer transition">
+                        {d}일
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
-            <input type="text" placeholder="장소를 입력하세요 (선택)" className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 focus:outline-none focus:border-brand" value={writeForm.location} onChange={e=>setWriteForm({...writeForm, location: e.target.value})} />
-            <div className="relative">
+            {/* 🌟 여기까지 커스텀 셀렉터 끝 */}
+
+            <input type="text" placeholder="장소를 입력하세요 (선택)" className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 focus:outline-none focus:border-brand relative z-30" value={writeForm.location} onChange={e=>setWriteForm({...writeForm, location: e.target.value})} />
+            <div className="relative z-30">
               <textarea placeholder="오늘의 일기를 남겨주세요 (최대 200자)" maxLength={200} className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 h-32 resize-none focus:outline-none focus:border-brand" value={writeForm.content} onChange={e=>setWriteForm({...writeForm, content: e.target.value})} />
               <span className="absolute bottom-3 right-3 text-xs text-gray-400">{writeForm.content.length} / 200</span>
             </div>
           </div>
 
-          <div className="mt-auto pt-6 px-4">
+          <div className="mt-auto pt-6 px-4 relative z-30">
             <button onClick={handleWriteSubmit} disabled={isUploading} className="w-full bg-brand text-white font-bold py-3.5 rounded-xl shadow-md active:scale-95 transition disabled:opacity-50">
               작성 완료
             </button>

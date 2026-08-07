@@ -328,7 +328,17 @@ const renderWrite = () => {
     if (!selectedFeed) return null;
 
     return (
-      <div className="flex flex-col h-full bg-white relative">
+      <div className="flex flex-col h-full bg-white relative" style={{ animation: 'feedScaleUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards' }} >
+
+        <style>
+          {`
+            @keyframes feedScaleUp {
+              0% { opacity: 0; transform: scale(0.9); }
+              100% { opacity: 1; transform: scale(1); }
+            }
+          `}
+        </style>
+        
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <button onClick={() => setCurrentView('feed')} className="text-gray-800"><ArrowLeft size={24} /></button>
           <span className="font-bold text-gray-700">{selectedFeed.date}</span>

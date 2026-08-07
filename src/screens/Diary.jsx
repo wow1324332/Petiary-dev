@@ -8,10 +8,10 @@ import { auth, db, storage } from '../firebaseConfig';
 
 export default function Diary() {
   const [currentView, setCurrentView] = useState('feed');
-  const [isDetailClosing, setIsDetailClosing] = useState(false);
   const [activeTab, setActiveTab] = useState('feed'); 
   const [isLoading, setIsLoading] = useState(true); // 처음 데이터 불러올 때 로딩
   const [isUploading, setIsUploading] = useState(false); // 글 작성 시 로딩
+  const [isDetailClosing, setIsDetailClosing] = useState(false);
 
   const [feeds, setFeeds] = useState([]);
   const [selectedFeed, setSelectedFeed] = useState(null);
@@ -327,8 +327,6 @@ const renderWrite = () => {
 
 const renderDetail = () => {
     if (!selectedFeed) return null;
-
-    // 🌟 뒤로가기 버튼을 눌렀을 때 실행되는 똑똑한 함수
     const handleBack = () => {
       setIsDetailClosing(true); // 1. 닫히는 애니메이션 시작!
       
@@ -342,29 +340,31 @@ const renderDetail = () => {
       <div 
         className="flex flex-col h-full bg-white relative"
         style={{ 
-          // 🌟 상태에 따라 열릴 때(slideInRight)와 닫힐 때(slideOutRight) 애니메이션 분기 처리
+          // 🌟 버벅임 방지를 위한 하드웨어 가속(willChange)과 그림자(boxShadow) 추가
           animation: isDetailClosing 
             ? 'slideOutRight 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards' 
-            : 'slideInRight 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards'
+            : 'slideInRight 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+          willChange: 'transform', 
+          boxShadow: '-5px 0 25px rgba(0,0,0,0.08)'
         }}
       >
-        {/* 🌟 좌우 슬라이드 애니메이션 정의 */}
         <style>
           {`
+            /* 🌟 translateX 대신 translate3d를 쓰면 스마트폰 GPU가 일을 해서 훨씬 부드럽습니다 */
             @keyframes slideInRight {
-              0% { transform: translateX(100%); }
-              100% { transform: translateX(0); }
+              0% { transform: translate3d(100%, 0, 0); }
+              100% { transform: translate3d(0, 0, 0); }
             }
             @keyframes slideOutRight {
-              0% { transform: translateX(0); }
-              100% { transform: translateX(100%); }
+              0% { transform: translate3d(0, 0, 0); }
+              100% { transform: translate3d(100%, 0, 0); }
             }
           `}
         </style>
 
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          {/* 🌟 뒤로가기 버튼에 방금 만든 handleBack 함수를 연결합니다 */}
-          <button onClick={handleBack} className="text-gray-800"><ArrowLeft size={24} /></button>
+          {/* 🌟 닫히는 중일 때는 버튼을 두 번 못 누르게 disabled 추가 */}
+          <button onClick={handleBack} disabled={isDetailClosing} className="text-gray-800"><ArrowLeft size={24} /></button>
           <span className="font-bold text-gray-700">{selectedFeed.date}</span>
           <div className="w-6" />
         </div>
@@ -442,12 +442,26 @@ const renderDetail = () => {
       </div>
     );
   };
+return (
+    <div className="w-full h-full overflow-hidden bg-gray-50 relative">
+      
+      {/* 1. 피드 화면은 지우지 않고 항상 바닥에 깔아둡니다 */}
+      {renderFeedList()}
+      
+      {/* 2. 글쓰기 화면 오버레이 */}
+      {currentView === 'write' && (
+        <div className="absolute inset-0 z-40 bg-white">
+          {renderWrite()}
+        </div>
+      )}
+      
+      {/* 3. 상세 화면 오버레이 (열려있거나, 닫히는 중일 때만 위에 덮습니다) */}
+      {(currentView === 'detail' || isDetailClosing) && (
+        <div className="absolute inset-0 z-50">
+          {renderDetail()}
+        </div>
+      )}
 
-  return (
-    <div className="w-full h-full overflow-hidden bg-gray-50">
-      {currentView === 'feed' && renderFeedList()}
-      {currentView === 'write' && renderWrite()}
-      {currentView === 'detail' && renderDetail()}
     </div>
   );
 }

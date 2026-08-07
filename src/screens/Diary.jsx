@@ -163,9 +163,9 @@ const renderWrite = () => {
 
     return (
       <div className="flex flex-col h-full bg-white relative">
-        {/* 업로드 로딩 오버레이 */}
+        {/* 🌟 문제 해결: 로딩 화면의 z-50을 z-[100]으로 높여서 무조건 제일 위에 오도록 수정했습니다! */}
         {isUploading && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[100] flex flex-col items-center justify-center">
             <Loader2 className="animate-spin text-brand w-12 h-12 mb-4" />
             <p className="font-bold text-gray-700">추억을 저장하고 있어요... 🐾</p>
           </div>
@@ -187,14 +187,12 @@ const renderWrite = () => {
             {writeForm.previewUrls.map((_, idx) => <div key={idx} className={`w-2 h-2 rounded-full ${writeCurrentImgIdx === idx ? 'bg-brand' : 'bg-gray-300'}`} />)}
           </div>
 
-          {/* 🌟 문제 해결: 투명 배경을 space-y-4 영역 밖으로 꺼냈습니다! 이제 밀려나지 않습니다. */}
           {openSelector && (
             <div className="fixed inset-0 z-40" onClick={() => setOpenSelector(null)}></div>
           )}
 
           <div className="px-4 space-y-4 relative">
             
-            {/* 🌟 커스텀 디자인된 날짜 셀렉터 영역 */}
             <div className="flex gap-2 relative z-50">
               
               {/* 년도 셀렉터 */}

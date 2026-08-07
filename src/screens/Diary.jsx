@@ -41,8 +41,12 @@ export default function Diary() {
   // 1. 피드 목록 화면
   // =====================================================================
   const renderFeedList = () => (
-    <div className="flex flex-col h-full bg-white relative">
-      <div className="flex justify-center border-b border-gray-100 py-3">
+    <div 
+      className="flex flex-col h-full relative" 
+      style={{ backgroundImage: "url('/bg-feed.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      {/* 상단 탭 (배경화면 위에서도 글씨가 잘 보이도록 반투명한 하얀색 배경을 깔아주었습니다) */}
+      <div className="flex justify-center border-b border-gray-100 py-3 bg-white/80 backdrop-blur-sm">
         <div className="flex gap-6 text-lg font-bold">
           <button onClick={() => setActiveTab('feed')} className={`${activeTab === 'feed' ? 'text-brand border-b-2 border-brand pb-1' : 'text-gray-400'}`}>피드</button>
           <button onClick={() => setActiveTab('calendar')} className={`${activeTab === 'calendar' ? 'text-brand border-b-2 border-brand pb-1' : 'text-gray-400'}`}>캘린더</button>
@@ -52,19 +56,18 @@ export default function Diary() {
       {activeTab === 'feed' ? (
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <div className="flex flex-col items-center justify-center h-full text-gray-600 bg-white/40">
               <Loader2 className="animate-spin text-brand w-8 h-8 mb-2" />
-              <p>피드를 불러오는 중...</p>
+              <p className="font-bold">피드를 불러오는 중...</p>
             </div>
           ) : feeds.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <div className="flex flex-col items-center justify-center h-full text-gray-700 bg-white/40 font-bold">
               <p>첫 일기를 작성해 보세요! 🐾</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-0.5">
+            <div className="grid grid-cols-3 gap-1 p-1">
               {feeds.map((feed) => (
-                <div key={feed.id} className="aspect-square bg-gray-100 cursor-pointer active:opacity-70 transition" onClick={() => { setSelectedFeed(feed); setCurrentView('detail'); }}>
-                  {/* 여러 이미지 중 첫 번째 이미지를 썸네일로 사용 */}
+                <div key={feed.id} className="aspect-square bg-gray-100 cursor-pointer active:opacity-70 transition rounded-md overflow-hidden shadow-sm" onClick={() => { setSelectedFeed(feed); setCurrentView('detail'); }}>
                   <img src={feed.images[0]} alt="피드 썸네일" className="w-full h-full object-cover" />
                 </div>
               ))}
@@ -72,7 +75,7 @@ export default function Diary() {
           )}
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-gray-400">캘린더 화면은 준비 중입니다 📅</div>
+        <div className="flex-1 flex items-center justify-center text-gray-700 bg-white/40 font-bold">캘린더 화면은 준비 중입니다 📅</div>
       )}
 
       {/* 글쓰기 버튼 */}

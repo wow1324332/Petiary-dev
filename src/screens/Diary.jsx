@@ -155,7 +155,7 @@ export default function Diary() {
 
 const [openSelector, setOpenSelector] = useState(null);
 
-  const renderWrite = () => {
+const renderWrite = () => {
     const currentYear = today.getFullYear();
     const years = Array.from({length: currentYear - 1950 + 1}, (_, i) => currentYear - i);
     const months = Array.from({length: 12}, (_, i) => i + 1);
@@ -187,12 +187,12 @@ const [openSelector, setOpenSelector] = useState(null);
             {writeForm.previewUrls.map((_, idx) => <div key={idx} className={`w-2 h-2 rounded-full ${writeCurrentImgIdx === idx ? 'bg-brand' : 'bg-gray-300'}`} />)}
           </div>
 
+          {/* 🌟 문제 해결: 투명 배경을 space-y-4 영역 밖으로 꺼냈습니다! 이제 밀려나지 않습니다. */}
+          {openSelector && (
+            <div className="fixed inset-0 z-40" onClick={() => setOpenSelector(null)}></div>
+          )}
+
           <div className="px-4 space-y-4 relative">
-            
-            {/* 🌟 셀렉터 외부 클릭 시 닫히게 하는 투명 배경 */}
-            {openSelector && (
-              <div className="fixed inset-0 z-40" onClick={() => setOpenSelector(null)}></div>
-            )}
             
             {/* 🌟 커스텀 디자인된 날짜 셀렉터 영역 */}
             <div className="flex gap-2 relative z-50">
@@ -249,7 +249,6 @@ const [openSelector, setOpenSelector] = useState(null);
               </div>
 
             </div>
-            {/* 🌟 여기까지 커스텀 셀렉터 끝 */}
 
             <input type="text" placeholder="장소를 입력하세요 (선택)" className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 focus:outline-none focus:border-brand relative z-30" value={writeForm.location} onChange={e=>setWriteForm({...writeForm, location: e.target.value})} />
             <div className="relative z-30">

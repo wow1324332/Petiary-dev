@@ -337,15 +337,16 @@ const renderDetail = () => {
     };
 
     return (
-      <div 
+       <div 
         className="flex flex-col h-full bg-white relative"
         style={{ 
-          // 🌟 버벅임 방지를 위한 하드웨어 가속(willChange)과 그림자(boxShadow) 추가
           animation: isDetailClosing 
             ? 'slideOutRight 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards' 
-            : 'slideInRight 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+            // 👇 끝에 '0.05s both'를 추가했습니다! (0.05초 동안 화면 밖에서 렌더링을 끝내고 들어오라는 마법의 명령어입니다)
+            : 'slideInRight 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) 0.05s both',
           willChange: 'transform', 
-          boxShadow: '-5px 0 25px rgba(0,0,0,0.08)'
+          // 👇 버벅임을 유발하는 무거운 그림자 크기를 가볍게 줄였습니다.
+          boxShadow: '-2px 0 10px rgba(0,0,0,0.05)'
         }}
       >
         <style>

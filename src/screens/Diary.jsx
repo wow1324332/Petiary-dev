@@ -41,27 +41,36 @@ export default function Diary() {
   // 1. 피드 목록 화면
   // =====================================================================
   const renderFeedList = () => (
-    <div 
-      className="flex flex-col h-full relative" 
-      style={{ backgroundImage: "url('/bg/bg-feed.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
-    >
-      {/* 상단 탭 (배경화면 위에서도 글씨가 잘 보이도록 반투명한 하얀색 배경을 깔아주었습니다) */}
-      <div className="flex justify-center border-b border-gray-100 py-3 bg-white/80 backdrop-blur-sm">
+    <div className="flex flex-col h-full relative overflow-hidden">
+      
+      {/* 🌟 배경 이미지와 하얀색 반투명 필터 (오버레이) */}
+      <div 
+        className="absolute inset-0 z-0"
+        style={{ backgroundImage: "url('/bg-feed.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+      >
+        {/* bg-white/70 으로 하얀색을 70% 덮어 씌워서 배경을 연하게 만듭니다. 
+            (더 연하게 하려면 80, 진하게 하려면 50 등으로 숫자를 조절할 수 있습니다) */}
+        <div className="absolute inset-0 bg-white/70"></div> 
+      </div>
+
+      {/* 상단 탭 (relative z-10을 주어 배경 위로 깔끔하게 올립니다) */}
+      <div className="relative z-10 flex justify-center border-b border-gray-100 py-3 bg-white/80 backdrop-blur-sm">
         <div className="flex gap-6 text-lg font-bold">
           <button onClick={() => setActiveTab('feed')} className={`${activeTab === 'feed' ? 'text-brand border-b-2 border-brand pb-1' : 'text-gray-400'}`}>피드</button>
           <button onClick={() => setActiveTab('calendar')} className={`${activeTab === 'calendar' ? 'text-brand border-b-2 border-brand pb-1' : 'text-gray-400'}`}>캘린더</button>
         </div>
       </div>
 
+      {/* 콘텐츠 영역 (relative z-10) */}
       {activeTab === 'feed' ? (
-        <div className="flex-1 overflow-y-auto">
+        <div className="relative z-10 flex-1 overflow-y-auto">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-600 bg-white/40">
+            <div className="flex flex-col items-center justify-center h-full text-gray-600">
               <Loader2 className="animate-spin text-brand w-8 h-8 mb-2" />
               <p className="font-bold">피드를 불러오는 중...</p>
             </div>
           ) : feeds.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-700 bg-white/40 font-bold">
+            <div className="flex flex-col items-center justify-center h-full text-gray-700 font-bold">
               <p>첫 일기를 작성해 보세요! 🐾</p>
             </div>
           ) : (
@@ -75,7 +84,7 @@ export default function Diary() {
           )}
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-gray-700 bg-white/40 font-bold">캘린더 화면은 준비 중입니다 📅</div>
+        <div className="relative z-10 flex-1 flex items-center justify-center text-gray-700 font-bold">캘린더 화면은 준비 중입니다 📅</div>
       )}
 
       {/* 글쓰기 버튼 */}

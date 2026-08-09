@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings, X, Loader2, Pencil, Lock, Unlock, PawPrint } from 'lucide-react'; 
+import { Settings, X, Loader2, Pencil, Lock, Unlock, PawPrint, User, ArrowLeft } from 'lucide-react';
 import { doggyData } from '../data/doggyData';
 import { backgroundData } from '../data/backgroundData';
 import { furnitureData } from '../data/furnitureData'; 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig'; 
-import { onAuthStateChanged } from 'firebase/auth';  
+import { onAuthStateChanged, updateProfile } from 'firebase/auth';
 import { toastMessages } from '../data/toastData';
 
 // =============================================================================
@@ -155,6 +155,11 @@ export default function Home() {
   const [isModalReady, setIsModalReady] = useState(false);
   const [isLocked, setIsLocked] = useState(true);
   const [isTopMenuOpen, setIsTopMenuOpen] = useState(false);
+
+  const [isMyPageOpen, setIsMyPageOpen] = useState(false);
+  const [nickname, setNickname] = useState('');
+  const [newProfileFile, setNewProfileFile] = useState(null);
+  const [isProfileUploading, setIsProfileUploading] = useState(false);
 
   // 👇 1. 단순 문자열에서 객체를 담을 수 있도록 초기값을 null로 변경
   const [toast, setToast] = useState(null); 
@@ -347,6 +352,27 @@ export default function Home() {
     else if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { myDogPosition: { x: dogDragRef.current.lastX, y: dogDragRef.current.lastY } }, { merge: true });
   };
 
+  const handleSaveProfile = async () => {
+    if (!auth.currentUser) return;
+    setIsProfileUploading(true);
+    try {
+      let photoURL = auth.currentUser.photoURL;
+      if (newProfileFile) {
+        const storageRef = ref(storage, `profiles/${auth.currentUser.uid}_${Date.now()}`);
+        const snapshot = await uploadBytes(storageRef, newProfileFile);
+        photoURL = await getDownloadURL(snapshot.ref);
+      }
+      await updateProfile(auth.currentUser, { displayName: nickname, photoURL: photoURL });
+      showToast({ message: "프로필이 예쁘게 저장되었습니다! 🐾", style: "bg-gray-800 text-white" });
+      setIsMyPageOpen(false);
+    } catch (error) {
+      console.error("프로필 저장 에러:", error);
+      showToast({ message: "프로필 저장에 실패했습니다.", style: "bg-red-500 text-white" });
+    } finally {
+      setIsProfileUploading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-gray-100"
       onContextMenu={(e) => e.preventDefault()}>
@@ -369,8 +395,22 @@ export default function Home() {
         {/* 스르륵 나타나는 하위 버튼들 */}
         {isTopMenuOpen && (
           <div className="flex flex-col gap-3 origin-top animate-[slideUp_0.2s_ease-out]">
+            
+            {/* 마이페이지 버튼 */}
             <button 
-              onClick={() => setIsLocked(!isLocked)} 
+              onClick={() => {
+                setIsTopMenuOpen(false);
+                setNickname(auth.currentUser?.displayName || '');
+                setNewProfileFile(null);
+                setIsMyPageOpen(true);
+              }}
+              className="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-brand transition-all active:scale-95 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/40"
+            >
+              <User size={18} />
+            </button>
+
+            <button 
+              onClick={() => setIsLocked(!isLocked)}
               className={`w-10 h-10 flex items-center justify-center transition-all active:scale-95 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/40 ${isLocked ? 'text-brand' : 'text-gray-500'}`}
             >
               {isLocked ? <Lock size={18} /> : <Unlock size={18} />}
@@ -508,6 +548,62 @@ export default function Home() {
                 </button>
               ))}
             </div>
+</div>
+        </div>
+      )}
+
+      {/* 마이페이지 모달 화면 */}
+      {isMyPageOpen && (
+        <div className="absolute inset-0 bg-white z-[100] flex flex-col animate-[slideInRight_0.3s_ease-out]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <button onClick={() => setIsMyPageOpen(false)} className="text-gray-800"><ArrowLeft size={24} /></button>
+            <h2 className="font-bold text-lg">마이페이지</h2>
+            <div className="w-6" />
+          </div>
+
+          <div className="flex-1 flex flex-col items-center p-8 space-y-8 overflow-y-auto relative">
+            {isProfileUploading && (
+              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+                <Loader2 className="animate-spin text-brand w-12 h-12 mb-4" />
+                <p className="font-bold text-gray-700">저장 중입니다...</p>
+              </div>
+            )}
+
+            <div className="flex flex-col items-center">
+              <label className="relative cursor-pointer group">
+                <div className="w-32 h-32 rounded-full bg-gray-100 border-2 border-gray-200 overflow-hidden shadow-sm">
+                  <img 
+                    src={newProfileFile ? URL.createObjectURL(newProfileFile) : (auth.currentUser?.photoURL || 'https://via.placeholder.com/150')} 
+                    alt="프로필" 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 active:opacity-100 transition">
+                  <Pencil className="text-white" size={24} />
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files[0] && setNewProfileFile(e.target.files[0])} />
+              </label>
+              <span className="text-xs text-gray-400 mt-3 font-medium">사진을 눌러 변경</span>
+            </div>
+
+            <div className="w-full space-y-2">
+              <label className="text-sm font-bold text-gray-700 ml-1">별명</label>
+              <input 
+                type="text" 
+                value={nickname} 
+                onChange={(e) => setNickname(e.target.value)} 
+                placeholder="사용할 별명을 입력해주세요" 
+                className="w-full border border-gray-200 rounded-xl p-4 bg-gray-50 focus:outline-none focus:border-brand transition" 
+              />
+            </div>
+
+            <button 
+              onClick={handleSaveProfile} 
+              disabled={isProfileUploading} 
+              className="w-full mt-auto bg-brand text-white font-bold py-4 rounded-xl shadow-md active:scale-95 transition disabled:opacity-50"
+            >
+              프로필 저장하기
+            </button>
           </div>
         </div>
       )}

@@ -388,25 +388,6 @@ export default function Home() {
       setIsProfileUploading(false);
     }
   };
-    if (!auth.currentUser) return;
-    setIsProfileUploading(true);
-    try {
-      let photoURL = auth.currentUser.photoURL;
-      if (newProfileFile) {
-        const storageRef = ref(storage, `profiles/${auth.currentUser.uid}_${Date.now()}`);
-        const snapshot = await uploadBytes(storageRef, newProfileFile);
-        photoURL = await getDownloadURL(snapshot.ref);
-      }
-      await updateProfile(auth.currentUser, { displayName: nickname, photoURL: photoURL });
-      showToast({ message: "프로필이 예쁘게 저장되었습니다! 🐾", style: "bg-gray-800 text-white" });
-      setIsMyPageOpen(false);
-    } catch (error) {
-      console.error("프로필 저장 에러:", error);
-      showToast({ message: "프로필 저장에 실패했습니다.", style: "bg-red-500 text-white" });
-    } finally {
-      setIsProfileUploading(false);
-    }
-  };
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-gray-100"

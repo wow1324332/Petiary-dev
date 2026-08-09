@@ -318,7 +318,7 @@ const renderWrite = () => {
     if (!commentInput.trim() || !auth.currentUser) return;
     try {
       const uid = auth.currentUser.uid;
-      const newComment = { user: "나", text: commentInput, createdAt: Date.now() };
+      const newComment = { user: auth.currentUser?.displayName || "나", text: commentInput, createdAt: Date.now() };
       const updatedComments = [...selectedFeed.comments, newComment];
 
       // Firestore의 해당 문서(document)만 골라서 댓글 배열(comments) 업데이트
@@ -379,7 +379,7 @@ const renderDetail = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-                  <img src="https://via.placeholder.com/150" alt="프로필" className="w-full h-full object-cover" />
+                 <img src={auth.currentUser?.photoURL || "https://via.placeholder.com/150"} alt="프로필" className="w-full h-full object-cover" />
                 </div>
                 <button className="flex items-center gap-1 text-gray-600 font-medium"><Heart size={22} className="active:scale-90 transition" /><span>{selectedFeed.likes}</span></button>
               </div>
@@ -476,9 +476,6 @@ return (
           }
         `}
       </style>
-
-      {/* 1. 피드 화면은 지우지 않고 항상 바닥에 깔아둡니다 */}
-      {renderFeedList()}
       
       {/* 1. 피드 화면은 지우지 않고 항상 바닥에 깔아둡니다 */}
       {renderFeedList()}

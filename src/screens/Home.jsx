@@ -5,8 +5,9 @@ import { doggyData } from '../data/doggyData';
 import { backgroundData } from '../data/backgroundData';
 import { furnitureData } from '../data/furnitureData'; 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig'; 
-import { onAuthStateChanged, updateProfile } from 'firebase/auth';
+import { auth, db, storage } from '../firebaseConfig';
+import { onAuthStateChanged, updateProfile } from 'firebase/auth';  
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toastMessages } from '../data/toastData';
 
 // =============================================================================

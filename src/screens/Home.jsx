@@ -160,6 +160,8 @@ export default function Home() {
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);
   const [nickname, setNickname] = useState('');
   const [newProfileFile, setNewProfileFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null); // 🌟 깜빡임 방지용: 이미지 주소를 한 번만 기억해둡니다!
+  const [isEditingNickname, setIsEditingNickname] = useState(false); // 🌟 별명 수정 모드인지 체크하는 스위치
   const [isProfileUploading, setIsProfileUploading] = useState(false);
 
   // 👇 1. 단순 문자열에서 객체를 담을 수 있도록 초기값을 null로 변경
@@ -353,7 +355,39 @@ export default function Home() {
     else if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { myDogPosition: { x: dogDragRef.current.lastX, y: dogDragRef.current.lastY } }, { merge: true });
   };
 
-  const handleSaveProfile = async () => {
+// 🌟 1. 사진만 따로 저장하는 함수
+  const handleSavePhoto = async () => {
+    if (!auth.currentUser || !newProfileFile) return;
+    setIsProfileUploading(true);
+    try {
+      const storageRef = ref(storage, `profiles/${auth.currentUser.uid}_${Date.now()}`);
+      const snapshot = await uploadBytes(storageRef, newProfileFile);
+      const photoURL = await getDownloadURL(snapshot.ref);
+      await updateProfile(auth.currentUser, { photoURL: photoURL });
+      showToast({ message: "프사가 예쁘게 변경되었습니다! 🐾", style: "bg-gray-800 text-white" });
+      setNewProfileFile(null);
+      setPreviewUrl(null); // 저장 후 미리보기 초기화
+    } catch (error) {
+      showToast({ message: "사진 저장에 실패했습니다.", style: "bg-red-500 text-white" });
+    } finally {
+      setIsProfileUploading(false);
+    }
+  };
+
+  // 🌟 2. 별명만 따로 저장하는 함수
+  const handleSaveNickname = async () => {
+    if (!auth.currentUser || !nickname.trim()) return;
+    setIsProfileUploading(true);
+    try {
+      await updateProfile(auth.currentUser, { displayName: nickname });
+      showToast({ message: "별명이 멋지게 변경되었습니다! 🐾", style: "bg-gray-800 text-white" });
+      setIsEditingNickname(false); // 저장 완료되면 텍스트 모드로 복귀!
+    } catch (error) {
+      showToast({ message: "별명 저장에 실패했습니다.", style: "bg-red-500 text-white" });
+    } finally {
+      setIsProfileUploading(false);
+    }
+  };
     if (!auth.currentUser) return;
     setIsProfileUploading(true);
     try {
@@ -403,6 +437,8 @@ export default function Home() {
                 setIsTopMenuOpen(false);
                 setNickname(auth.currentUser?.displayName || '');
                 setNewProfileFile(null);
+                setPreviewUrl(null); // 미리보기 비우기
+                setIsEditingNickname(false); // 별명 수정 모드 끄기
                 setIsMyPageOpen(true);
               }}
               className="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-brand transition-all active:scale-95 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/40"
@@ -570,11 +606,13 @@ export default function Home() {
               </div>
             )}
 
+            {/* 1. 프사 설정 영역 */}
             <div className="flex flex-col items-center">
               <label className="relative cursor-pointer group">
                 <div className="w-32 h-32 rounded-full bg-gray-100 border-2 border-gray-200 overflow-hidden shadow-sm">
+                  {/* 🌟 깜빡임 방지: 무한 렌더링 대신 고정된 previewUrl을 씁니다! */}
                   <img 
-                    src={newProfileFile ? URL.createObjectURL(newProfileFile) : (auth.currentUser?.photoURL || 'https://via.placeholder.com/150')} 
+                    src={previewUrl || auth.currentUser?.photoURL || 'https://via.placeholder.com/150'} 
                     alt="프로필" 
                     className="w-full h-full object-cover" 
                   />
@@ -582,29 +620,55 @@ export default function Home() {
                 <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 active:opacity-100 transition">
                   <Pencil className="text-white" size={24} />
                 </div>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files[0] && setNewProfileFile(e.target.files[0])} />
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  if (e.target.files[0]) {
+                    setNewProfileFile(e.target.files[0]);
+                    setPreviewUrl(URL.createObjectURL(e.target.files[0])); // 🌟 여기서 한 번만 주소를 생성!
+                  }
+                }} />
               </label>
-              <span className="text-xs text-gray-400 mt-3 font-medium">사진을 눌러 변경</span>
+              
+              {/* 🌟 사진을 선택했을 때만 나타나는 사진 저장/취소 버튼 */}
+              {newProfileFile ? (
+                <div className="flex gap-2 mt-4 animate-[slideUp_0.2s_ease-out]">
+                  <button onClick={() => { setNewProfileFile(null); setPreviewUrl(null); }} className="px-4 py-2 text-sm font-bold text-gray-500 bg-gray-100 rounded-full active:scale-95 transition">취소</button>
+                  <button onClick={handleSavePhoto} className="px-4 py-2 text-sm font-bold text-white bg-brand rounded-full shadow-md active:scale-95 transition">사진 저장</button>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-400 mt-3 font-medium">사진을 눌러 변경</span>
+              )}
             </div>
 
-            <div className="w-full space-y-2">
+            {/* 2. 별명 설정 영역 */}
+            <div className="w-full space-y-2 mt-4">
               <label className="text-sm font-bold text-gray-700 ml-1">별명</label>
-              <input 
-                type="text" 
-                value={nickname} 
-                onChange={(e) => setNickname(e.target.value)} 
-                placeholder="사용할 별명을 입력해주세요" 
-                className="w-full border border-gray-200 rounded-xl p-4 bg-gray-50 focus:outline-none focus:border-brand transition" 
-              />
+              
+              <div className="flex items-center gap-2 h-14">
+                {isEditingNickname ? (
+                  // 🌟 수정 모드일 때: 텍스트 입력칸 + 저장/취소 버튼
+                  <>
+                    <input 
+                      type="text" 
+                      value={nickname} 
+                      onChange={(e) => setNickname(e.target.value)} 
+                      placeholder="별명을 입력해주세요" 
+                      className="flex-1 h-full border border-gray-200 rounded-xl px-4 bg-white focus:outline-none focus:border-brand shadow-sm" 
+                    />
+                    <button onClick={handleSaveNickname} className="h-full px-5 bg-brand text-white font-bold rounded-xl active:scale-95 shadow-md transition">저장</button>
+                    <button onClick={() => { setIsEditingNickname(false); setNickname(auth.currentUser?.displayName || ''); }} className="h-full px-4 text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-xl active:scale-95 transition"><X size={20}/></button>
+                  </>
+                ) : (
+                  // 🌟 평소 상태: 별명 텍스트 + 우측 수정(연필) 버튼
+                  <div className="flex-1 flex items-center justify-between h-full border border-gray-100 rounded-xl px-4 bg-gray-50/50 shadow-sm">
+                    <span className="text-gray-800 font-medium">{nickname || "별명을 설정해주세요"}</span>
+                    <button onClick={() => setIsEditingNickname(true)} className="p-2 text-gray-400 hover:text-brand transition active:scale-95"><Pencil size={18}/></button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <button 
-              onClick={handleSaveProfile} 
-              disabled={isProfileUploading} 
-              className="w-full mt-auto bg-brand text-white font-bold py-4 rounded-xl shadow-md active:scale-95 transition disabled:opacity-50"
-            >
-              프로필 저장하기
-            </button>
+            {/* 기존의 거대한 '프로필 저장하기' 버튼은 싹 삭제했습니다! */}
+            
           </div>
         </div>
       )}

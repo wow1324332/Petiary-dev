@@ -627,16 +627,23 @@ export default function Home() {
               <div className="flex items-center gap-2 h-14">
                 {isEditingNickname ? (
                   // 🌟 수정 모드일 때: 텍스트 입력칸 + 저장/취소 버튼
-                  <>
+                 <>
                     <input 
                       type="text" 
                       value={nickname} 
                       onChange={(e) => setNickname(e.target.value)} 
-                      placeholder="별명을 입력해주세요" 
-                      className="flex-1 h-full border border-gray-200 rounded-xl px-4 bg-white focus:outline-none focus:border-brand shadow-sm" 
+                      placeholder="별명 입력" 
+                      // 🌟 1. min-w-0: 입력칸이 우측 화면을 뚫고 나가지 않게 제어합니다
+                      className="flex-1 min-w-0 h-full border border-gray-200 rounded-xl px-3 bg-white focus:outline-none focus:border-brand shadow-sm" 
                     />
-                    <button onClick={handleSaveNickname} className="h-full px-5 bg-brand text-white font-bold rounded-xl active:scale-95 shadow-md transition">저장</button>
-                    <button onClick={() => { setIsEditingNickname(false); setNickname(auth.currentUser?.displayName || ''); }} className="h-full px-4 text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-xl active:scale-95 transition"><X size={20}/></button>
+                    {/* 🌟 2. shrink-0, whitespace-nowrap: 버튼이 찌그러지거나 글씨가 세로로 꺾이지 않게 방어합니다 */}
+                    <button onClick={handleSaveNickname} className="shrink-0 whitespace-nowrap h-full px-4 bg-brand text-white font-bold rounded-xl active:scale-95 shadow-md transition">
+                      저장
+                    </button>
+                    {/* 🌟 3. X 버튼이 정중앙에 예쁘게 오도록 flex, items-center를 추가했습니다 */}
+                    <button onClick={() => { setIsEditingNickname(false); setNickname(auth.currentUser?.displayName || ''); }} className="shrink-0 flex items-center justify-center h-full px-3 text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-xl active:scale-95 transition">
+                      <X size={20}/>
+                    </button>
                   </>
                 ) : (
                   // 🌟 평소 상태: 별명 텍스트 + 우측 수정(연필) 버튼

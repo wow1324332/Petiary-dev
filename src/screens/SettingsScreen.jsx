@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
@@ -63,9 +63,7 @@ export default function SettingsScreen() {
       alert("해제 실패: " + error.message);
     }
   };
-
-  const handleLogout = async () => {
-
+ 
   const handleLogout = async () => {
     const confirmLogout = window.confirm("정말 로그아웃 하시겠습니까?");
     if (confirmLogout) {

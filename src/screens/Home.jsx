@@ -191,18 +191,37 @@ export default function Home() {
   const [isBgModalOpen, setIsBgModalOpen] = useState(false);
   const [isFurnModalOpen, setIsFurnModalOpen] = useState(false); 
 
-  const dogDragRef = useRef({ startX: 0, startY: 0, initPosX: 0, initPosY: 0, isDragged: false, lastX: 0, lastY: 0 });
+const dogDragRef = useRef({ startX: 0, startY: 0, initPosX: 0, initPosY: 0, isDragged: false, lastX: 0, lastY: 0 });
   const [isDogDragging, setIsDogDragging] = useState(false);
+
+  // 🌟 [추가] 보조 보호자 여부 상태
+  const [isSubGuardian, setIsSubGuardian] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const userRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(userRef);
+          // 1. 내 정보를 확인해서 '보조 보호자'인지 검사
+          const myRef = doc(db, 'users', user.uid);
+          const mySnap = await getDoc(myRef);
+          
+          let targetUid = user.uid; // 기본은 내 방
+          let subStatus = false;
 
-          if (docSnap.exists()) {
-            const userData = docSnap.data();
+          if (mySnap.exists() && mySnap.data().masterUid) {
+            targetUid = mySnap.data().masterUid; // 메인 보호자의 방으로 타겟 변경!
+            subStatus = true;
+          }
+          
+          setIsSubGuardian(subStatus);
+          if (subStatus) setIsLocked(true); // 보조 보호자는 홈 편집 불가(강제 잠금)
+
+          // 2. 타겟(메인 혹은 나)의 홈 데이터 불러오기
+          const targetRef = doc(db, 'users', targetUid);
+          const targetSnap = await getDoc(targetRef);
+
+          if (targetSnap.exists()) {
+            const userData = targetSnap.data();
             if (userData.mySelectedDog) {
               const foundDog = doggyData.find(dog => dog.id === userData.mySelectedDog);
               if (foundDog) setSelectedDog(foundDog);
@@ -427,12 +446,15 @@ export default function Home() {
               <User size={18} />
             </button>
 
-            <button 
-              onClick={() => setIsLocked(!isLocked)}
-              className={`w-10 h-10 flex items-center justify-center transition-all active:scale-95 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/40 ${isLocked ? 'text-brand' : 'text-gray-500'}`}
-            >
-              {isLocked ? <Lock size={18} /> : <Unlock size={18} />}
-            </button>
+            {/* 🌟 메인 보호자일 때만 잠금 해제 가능 */}
+            {!isSubGuardian && (
+              <button 
+                onClick={() => setIsLocked(!isLocked)}
+                className={`w-10 h-10 flex items-center justify-center transition-all active:scale-95 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/40 ${isLocked ? 'text-brand' : 'text-gray-500'}`}
+              >
+                {isLocked ? <Lock size={18} /> : <Unlock size={18} />}
+              </button>
+            )}
             <Link to="/settings" className="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-brand transition-all active:scale-95 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/40">
               <Settings size={18} />
             </Link>
@@ -484,27 +506,29 @@ export default function Home() {
         </div>
       )}
 
-      {/* 우측 하단 플로팅 메뉴 */}
-      <div className="absolute bottom-6 right-6 z-40 flex flex-col items-end gap-3">
-        {isFabOpen && (
-          <div className="flex flex-col gap-3 animate-[slideUp_0.2s_ease-out] origin-bottom-right">
-            {[
-              { label: '배경 변경', action: () => { setIsBgModalOpen(true); setIsFabOpen(false); } },
-              { label: '가구 배치', action: () => { setIsFurnModalOpen(true); setIsFabOpen(false); } },
-              { label: '가전 배치', action: () => {} },
-              { label: '소품 배치', action: () => {} },
-              { label: '댕댕 추가', action: () => {} },
-            ].map((menu, idx) => (
-              <button key={idx} onClick={menu.action} className="bg-white/60 backdrop-blur-md border border-white/40 shadow-lg text-gray-800 font-bold px-4 py-2.5 rounded-full text-sm transition active:scale-95">
-                {menu.label}
-              </button>
-            ))}
-          </div>
-        )}
-        <button onClick={() => setIsFabOpen(!isFabOpen)} className={`w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/50 backdrop-blur-lg transition-all duration-300 active:scale-95 ${isFabOpen ? 'bg-brand text-white rotate-45' : 'bg-white/70 text-gray-700'}`}>
-          <Pencil size={24} />
-        </button>
-      </div>
+      {/* 우측 하단 플로팅 메뉴 (메인 보호자만 보임) */}
+      {!isSubGuardian && (
+        <div className="absolute bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+          {isFabOpen && (
+            <div className="flex flex-col gap-3 animate-[slideUp_0.2s_ease-out] origin-bottom-right">
+              {[
+                { label: '배경 변경', action: () => { setIsBgModalOpen(true); setIsFabOpen(false); } },
+                { label: '가구 배치', action: () => { setIsFurnModalOpen(true); setIsFabOpen(false); } },
+                { label: '가전 배치', action: () => {} },
+                { label: '소품 배치', action: () => {} },
+                { label: '댕댕 추가', action: () => {} },
+              ].map((menu, idx) => (
+                <button key={idx} onClick={menu.action} className="bg-white/60 backdrop-blur-md border border-white/40 shadow-lg text-gray-800 font-bold px-4 py-2.5 rounded-full text-sm transition active:scale-95">
+                  {menu.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <button onClick={() => setIsFabOpen(!isFabOpen)} className={`w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/50 backdrop-blur-lg transition-all duration-300 active:scale-95 ${isFabOpen ? 'bg-brand text-white rotate-45' : 'bg-white/70 text-gray-700'}`}>
+            <Pencil size={24} />
+          </button>
+        </div>
+      )}
 
       {/* 펫 선택 모달 */}
       {isDogModalOpen && (

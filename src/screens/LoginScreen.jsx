@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+// 🌟 db와 문서를 다루는 도구 추가
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebaseConfig';
 import { Download } from 'lucide-react';
 
 export default function LoginScreen() {
@@ -41,14 +43,29 @@ export default function LoginScreen() {
     }
   };
 
+// 🌟 초대 코드가 있으면 파이어베이스에 '보조 보호자'로 등록하는 마법의 함수
+  const checkAndLinkFamily = async (user) => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteUid = params.get('invite');
+    
+    // 초대 코드가 있고, 자기 자신의 링크를 누른 게 아닐 때만 보조 보호자로 연결!
+    if (inviteUid && inviteUid !== user.uid) {
+      await setDoc(doc(db, 'users', user.uid), { masterUid: inviteUid }, { merge: true });
+      alert("공동 보호자로 성공적으로 연결되었습니다! 🐾");
+    }
+  };
+
   const handleEmailSubmit = async (e) => {
     e.preventDefault(); 
     try {
+      let userCredential;
       if (isLoginTab) {
-        await signInWithEmailAndPassword(auth, email, password);
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
       }
+      // 🌟 로그인/가입 성공 직후 초대 코드 확인!
+      await checkAndLinkFamily(userCredential.user);
     } catch (error) {
       alert("오류가 발생했습니다: " + error.message);
     }
@@ -57,7 +74,9 @@ export default function LoginScreen() {
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      // 🌟 구글 로그인 성공 직후 초대 코드 확인!
+      await checkAndLinkFamily(userCredential.user);
     } catch (error) {
       console.error(error);
       alert("구글 로그인 중 오류가 발생했습니다.");

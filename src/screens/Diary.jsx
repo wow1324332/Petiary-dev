@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Pencil, ArrowLeft, MoreVertical, Heart, X, Download, Loader2 } from 'lucide-react';
 // 👇 Firebase 기능 불러오기
-import { collection, addDoc, getDocs, doc, updateDoc, query, orderBy, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, getDoc, doc, updateDoc, query, orderBy, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, storage } from '../firebaseConfig'; 
@@ -9,12 +9,15 @@ import { auth, db, storage } from '../firebaseConfig';
 export default function Diary() {
   const [currentView, setCurrentView] = useState('feed');
   const [activeTab, setActiveTab] = useState('feed'); 
-  const [isLoading, setIsLoading] = useState(true); // 처음 데이터 불러올 때 로딩
-  const [isUploading, setIsUploading] = useState(false); // 글 작성 시 로딩
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
   const [isDetailClosing, setIsDetailClosing] = useState(false);
 
   const [feeds, setFeeds] = useState([]);
   const [selectedFeed, setSelectedFeed] = useState(null);
+  
+  // 🌟 [추가] 피드의 주인이 누구인지(메인 보호자 UID) 기억할 상태
+  const [targetUid, setTargetUid] = useState(null);
 
   // =====================================================================
   // 🌟 [Firebase] 앱 실행 시 기존 피드 불러오기
@@ -23,7 +26,16 @@ export default function Diary() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const q = query(collection(db, 'users', user.uid, 'diaries'), orderBy('createdAt', 'desc'));
+          // 1. 내 정보를 확인해서 메인 보호자가 있는지 체크
+          const myDoc = await getDoc(doc(db, 'users', user.uid));
+          let currentTarget = user.uid;
+          if (myDoc.exists() && myDoc.data().masterUid) {
+            currentTarget = myDoc.data().masterUid;
+          }
+          setTargetUid(currentTarget);
+
+          // 2. 타겟(메인 보호자 혹은 나)의 피드 불러오기
+          const q = query(collection(db, 'users', currentTarget, 'diaries'), orderBy('createdAt', 'desc'));
           const querySnapshot = await getDocs(q);
           const fetchedFeeds = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setFeeds(fetchedFeeds);
@@ -142,17 +154,19 @@ export default function Diary() {
 
       // 2. Firestore에 업로드된 URL들과 텍스트 내용 저장하기
       const newFeedData = {
-        images: uploadedUrls, // 스토리지에서 받아온 진짜 이미지 URL들
+        images: uploadedUrls, 
         year: writeForm.year, month: writeForm.month, day: writeForm.day,
         date: `${writeForm.year}/${String(writeForm.month).padStart(2, '0')}/${String(writeForm.day).padStart(2, '0')}`,
         location: writeForm.location,
         content: writeForm.content,
         likes: 0,
         comments: [],
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        authorUid: auth.currentUser.uid // 🌟 누가 썼는지 작성자 기록!
       };
       
-      const docRef = await addDoc(collection(db, 'users', uid, 'diaries'), newFeedData);
+      // 🌟 내 방이 아닌 타겟(메인 보호자)의 방에 피드를 올립니다!
+      const docRef = await addDoc(collection(db, 'users', targetUid, 'diaries'), newFeedData);
 
       // 3. 화면 업데이트 및 초기화
       setFeeds([{ id: docRef.id, ...newFeedData }, ...feeds]);
@@ -295,13 +309,11 @@ const renderWrite = () => {
   // 🌟 2. 팝업에서 '진짜 삭제'를 눌렀을 때 실행되는 기능
   const executeDelete = async () => {
     try {
-      const uid = auth.currentUser.uid;
-      await deleteDoc(doc(db, 'users', uid, 'diaries', selectedFeed.id));
+      await deleteDoc(doc(db, 'users', targetUid, 'diaries', selectedFeed.id));
       setFeeds(feeds.filter(f => f.id !== selectedFeed.id));
       
       setIsDeletePopupOpen(false); // 팝업 닫기
       
-      // 삭제 후 상세 화면이 스르륵 닫히도록 애니메이션 처리
       setIsDetailClosing(true);
       setTimeout(() => {
         setCurrentView('feed');
@@ -317,12 +329,11 @@ const renderWrite = () => {
   const handleAddComment = async () => {
     if (!commentInput.trim() || !auth.currentUser) return;
     try {
-      const uid = auth.currentUser.uid;
       const newComment = { user: auth.currentUser?.displayName || "나", text: commentInput, createdAt: Date.now() };
       const updatedComments = [...selectedFeed.comments, newComment];
 
-      // Firestore의 해당 문서(document)만 골라서 댓글 배열(comments) 업데이트
-      const feedRef = doc(db, 'users', uid, 'diaries', selectedFeed.id);
+      // 타겟(메인 보호자)의 방에 있는 문서에 댓글 업데이트!
+      const feedRef = doc(db, 'users', targetUid, 'diaries', selectedFeed.id);
       await updateDoc(feedRef, { comments: updatedComments });
 
       // 화면 즉시 반영
@@ -390,9 +401,16 @@ const renderDetail = () => {
                 </button>
                 {isMoreMenuOpen && (
                   <div className="absolute right-0 mt-2 w-28 bg-white border border-gray-100 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-[slideDown_0.2s_ease-out]">
-                    <button onClick={() => { setIsMoreMenuOpen(false); alert("수정하기는 이미지 재구성 기능 작업 후 제공될 예정입니다! 🛠️"); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium">수정하기</button>
-                    <div className="w-full h-[1px] bg-gray-100"></div>
-                    <button onClick={handleDeleteClick} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-bold">삭제하기</button>
+                    {/* 🌟 내가 쓴 글이거나, 내가 메인 보호자(방장)일 때만 수정/삭제 노출 */}
+                    {(!selectedFeed.authorUid || selectedFeed.authorUid === auth.currentUser?.uid || targetUid === auth.currentUser?.uid) ? (
+                      <>
+                        <button onClick={() => { setIsMoreMenuOpen(false); alert("수정 기능 준비 중! 🛠️"); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium">수정하기</button>
+                        <div className="w-full h-[1px] bg-gray-100"></div>
+                        <button onClick={handleDeleteClick} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-bold">삭제하기</button>
+                      </>
+                    ) : (
+                      <div className="p-3 text-xs text-gray-400 text-center font-bold">권한이 없습니다</div>
+                    )}
                   </div>
                 )}
               </div>

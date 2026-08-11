@@ -13,15 +13,36 @@ export default function SettingsScreen() {
   const [familyMembers, setFamilyMembers] = useState([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 
-  // 🌟 보조 보호자 목록 불러오기 (나를 메인 보호자로 둔 유저들 찾기)
+  // 🌟 [추가] 내가 메인 보호자인지 판단하는 상태
+  const [isMasterMode, setIsMasterMode] = useState(true);
+
+  // 🌟 가족 구성원 전체 불러오기 (메인 + 보조 모두 포함)
   const fetchFamilyMembers = async () => {
     if (!auth.currentUser) return;
     setIsLoadingMembers(true);
     try {
-      const q = query(collection(db, 'users'), where('masterUid', '==', auth.currentUser.uid));
+      const myDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      
+      // 내게 masterUid가 있으면 그 사람 방, 없으면 내 방이 패밀리 기준점입니다.
+      const masterUid = (myDoc.exists() && myDoc.data().masterUid) ? myDoc.data().masterUid : auth.currentUser.uid;
+      const isMaster = (masterUid === auth.currentUser.uid);
+      setIsMasterMode(isMaster);
+
+      // 1. 메인 보호자(방장) 정보 가져오기
+      const masterDoc = await getDoc(doc(db, 'users', masterUid));
+      const masterData = masterDoc.exists() ? { id: masterDoc.id, isMaster: true, ...masterDoc.data() } : null;
+
+      // 2. 이 방에 소속된 보조 보호자들 전부 가져오기
+      const q = query(collection(db, 'users'), where('masterUid', '==', masterUid));
       const snapshot = await getDocs(q);
-      const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setFamilyMembers(members);
+      const subMembers = snapshot.docs.map(d => ({ id: d.id, isMaster: false, ...d.data() }));
+
+      // 메인 + 보조 합쳐서 목록 만들기
+      const allMembers = [];
+      if (masterData) allMembers.push(masterData);
+      allMembers.push(...subMembers);
+
+      setFamilyMembers(allMembers);
     } catch (error) {
       console.error("가족 불러오기 실패:", error);
     } finally {
@@ -141,14 +162,10 @@ export default function SettingsScreen() {
               </button>
             </div>
 
-            {/* 현재 연결된 가족 목록 */}
-            <h4 className="font-bold text-gray-700 mb-3 px-1">등록된 보조 보호자</h4>
+            {/* 🌟 가족 구성원 목록 */}
+            <h4 className="font-bold text-gray-700 mb-3 px-1">가족 구성원</h4>
             {isLoadingMembers ? (
               <p className="text-center text-gray-400 py-10 text-sm">불러오는 중...</p>
-            ) : familyMembers.length === 0 ? (
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center">
-                <p className="text-sm text-gray-400">아직 등록된 보조 보호자가 없습니다.<br/>링크를 공유하여 초대해보세요!</p>
-              </div>
             ) : (
               <div className="flex flex-col gap-3">
                 {familyMembers.map((member) => (
@@ -158,19 +175,31 @@ export default function SettingsScreen() {
                         <img src={member.photoURL || "https://via.placeholder.com/150"} alt="프로필" className="w-full h-full object-cover" />
                       </div>
                       <div>
-                        <p className="font-bold text-gray-800 text-sm">{member.displayName || "이름 없음"}</p>
-                        <p className="text-xs text-brand font-medium">보조 보호자</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-gray-800 text-sm">
+                            {member.displayName || "이름 없음"} 
+                            {member.id === auth.currentUser.uid && <span className="text-xs text-gray-400 font-normal ml-1">(나)</span>}
+                          </p>
+                        </div>
+                        <p className={`text-xs font-medium ${member.isMaster ? 'text-brand' : 'text-blue-500'}`}>
+                          {member.isMaster ? '👑 메인 보호자' : '보조 보호자'}
+                        </p>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => handleRemoveMember(member.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 transition active:scale-95 bg-gray-50 rounded-full"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+
+                    {/* 🌟 메인 보호자는 남을 강퇴할 수 있고, 보조 보호자는 스스로 나갈 수 있습니다 */}
+                    {(isMasterMode && !member.isMaster) || (!isMasterMode && member.id === auth.currentUser.uid) ? (
+                      <button 
+                        onClick={() => handleRemoveMember(member.id)}
+                        className="p-2 text-gray-400 hover:text-red-500 transition active:scale-95 bg-gray-50 rounded-full"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    ) : null}
                   </div>
                 ))}
               </div>
+            )}
             )}
           </div>
         </div>

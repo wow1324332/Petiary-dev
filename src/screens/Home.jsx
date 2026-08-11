@@ -191,32 +191,43 @@ export default function Home() {
   const [isBgModalOpen, setIsBgModalOpen] = useState(false);
   const [isFurnModalOpen, setIsFurnModalOpen] = useState(false); 
 
-const dogDragRef = useRef({ startX: 0, startY: 0, initPosX: 0, initPosY: 0, isDragged: false, lastX: 0, lastY: 0 });
+  const dogDragRef = useRef({ startX: 0, startY: 0, initPosX: 0, initPosY: 0, isDragged: false, lastX: 0, lastY: 0 });
   const [isDogDragging, setIsDogDragging] = useState(false);
 
-  // 🌟 [추가] 보조 보호자 여부 상태
+  // 🌟 [추가] 내가 보조 보호자인지 기억하는 상태
   const [isSubGuardian, setIsSubGuardian] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          // 1. 내 정보를 확인해서 '보조 보호자'인지 검사
+          let targetUid = user.uid;
+          let subStatus = false;
           const myRef = doc(db, 'users', user.uid);
           const mySnap = await getDoc(myRef);
-          
-          let targetUid = user.uid; // 기본은 내 방
-          let subStatus = false;
 
-          if (mySnap.exists() && mySnap.data().masterUid) {
-            targetUid = mySnap.data().masterUid; // 메인 보호자의 방으로 타겟 변경!
+          // 🌟 [핵심] 로그인 직후 로컬 금고에 초대 코드가 있으면 파이어베이스에 확정 저장!
+          const inviteUid = localStorage.getItem('inviteUid');
+          if (inviteUid && inviteUid !== user.uid) {
+            await setDoc(myRef, {
+              masterUid: inviteUid,
+              displayName: user.displayName || "보조 보호자",
+              photoURL: user.photoURL || ""
+            }, { merge: true });
+            localStorage.removeItem('inviteUid'); // 사용한 코드 파기
+            targetUid = inviteUid;
+            subStatus = true;
+            alert("공동 보호자로 성공적으로 연결되었습니다! 🐾");
+          } else if (mySnap.exists() && mySnap.data().masterUid) {
+            // 이미 보조 보호자로 등록된 경우
+            targetUid = mySnap.data().masterUid;
             subStatus = true;
           }
-          
-          setIsSubGuardian(subStatus);
-          if (subStatus) setIsLocked(true); // 보조 보호자는 홈 편집 불가(강제 잠금)
 
-          // 2. 타겟(메인 혹은 나)의 홈 데이터 불러오기
+          setIsSubGuardian(subStatus);
+          if (subStatus) setIsLocked(true); // 보조 보호자는 무조건 홈 편집 잠금
+
+          // 🌟 타겟(메인 보호자 또는 나)의 홈 데이터를 불러옵니다.
           const targetRef = doc(db, 'users', targetUid);
           const targetSnap = await getDoc(targetRef);
 

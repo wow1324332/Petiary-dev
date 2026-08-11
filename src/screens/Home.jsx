@@ -397,7 +397,7 @@ useEffect(() => {
     else if (auth.currentUser) await setDoc(doc(db, 'users', auth.currentUser.uid), { myDogPosition: { x: dogDragRef.current.lastX, y: dogDragRef.current.lastY } }, { merge: true });
   };
 
-// 🌟 1. 사진만 따로 저장하는 함수
+  // 🌟 1. 사진만 따로 저장하는 함수
   const handleSavePhoto = async () => {
     if (!auth.currentUser || !newProfileFile) return;
     setIsProfileUploading(true);
@@ -405,10 +405,15 @@ useEffect(() => {
       const storageRef = ref(storage, `profiles/${auth.currentUser.uid}_${Date.now()}`);
       const snapshot = await uploadBytes(storageRef, newProfileFile);
       const photoURL = await getDownloadURL(snapshot.ref);
+      
+      // 로그인 정보 업데이트
       await updateProfile(auth.currentUser, { photoURL: photoURL });
+      // 🌟 [추가] 패밀리 허브에서도 볼 수 있게 Firestore DB에도 사진 업데이트!
+      await setDoc(doc(db, 'users', auth.currentUser.uid), { photoURL: photoURL }, { merge: true });
+      
       showToast({ message: "프사가 예쁘게 변경되었습니다! 🐾", style: "bg-gray-800 text-white" });
       setNewProfileFile(null);
-      setPreviewUrl(null); // 저장 후 미리보기 초기화
+      setPreviewUrl(null); 
     } catch (error) {
       showToast({ message: "사진 저장에 실패했습니다.", style: "bg-red-500 text-white" });
     } finally {
@@ -421,9 +426,13 @@ useEffect(() => {
     if (!auth.currentUser || !nickname.trim()) return;
     setIsProfileUploading(true);
     try {
+      // 로그인 정보 업데이트
       await updateProfile(auth.currentUser, { displayName: nickname });
+      // 🌟 [추가] 패밀리 허브에서도 볼 수 있게 Firestore DB에도 별명 업데이트!
+      await setDoc(doc(db, 'users', auth.currentUser.uid), { displayName: nickname }, { merge: true });
+
       showToast({ message: "별명이 멋지게 변경되었습니다! 🐾", style: "bg-gray-800 text-white" });
-      setIsEditingNickname(false); // 저장 완료되면 텍스트 모드로 복귀!
+      setIsEditingNickname(false); 
     } catch (error) {
       showToast({ message: "별명 저장에 실패했습니다.", style: "bg-red-500 text-white" });
     } finally {

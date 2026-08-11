@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Pencil, ArrowLeft, MoreVertical, Heart, X, Download, Loader2 } from 'lucide-react';
 // 👇 Firebase 기능 불러오기
-import { collection, addDoc, getDocs, getDoc, doc, updateDoc, query, orderBy, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, getDoc, doc, updateDoc, query, orderBy, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, storage } from '../firebaseConfig'; 
@@ -20,13 +20,13 @@ export default function Diary() {
   const [targetUid, setTargetUid] = useState(null);
 
   // =====================================================================
-  // 🌟 [Firebase] 앱 실행 시 기존 피드 불러오기
+  // 🌟 [Firebase] 앱 실행 시 기존 피드 실시간(onSnapshot) 불러오기
   // =====================================================================
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeFeeds = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          // 1. 내 정보를 확인해서 메인 보호자가 있는지 체크
           const myDoc = await getDoc(doc(db, 'users', user.uid));
           let currentTarget = user.uid;
           if (myDoc.exists() && myDoc.data().masterUid) {
@@ -34,20 +34,26 @@ export default function Diary() {
           }
           setTargetUid(currentTarget);
 
-          // 2. 타겟(메인 보호자 혹은 나)의 피드 불러오기
+          // 🌟 로딩 딜레이 없애기: onSnapshot을 사용하면 캐시를 이용해 즉시 화면이 뜹니다!
           const q = query(collection(db, 'users', currentTarget, 'diaries'), orderBy('createdAt', 'desc'));
-          const querySnapshot = await getDocs(q);
-          const fetchedFeeds = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setFeeds(fetchedFeeds);
+          unsubscribeFeeds = onSnapshot(q, (snapshot) => {
+            const fetchedFeeds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setFeeds(fetchedFeeds);
+            setIsLoading(false);
+          });
         } catch (error) {
           console.error("피드 불러오기 실패:", error);
+          setIsLoading(false);
         }
       } else {
         setFeeds([]);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeFeeds) unsubscribeFeeds();
+    };
   }, []);
 
   // =====================================================================
@@ -162,13 +168,14 @@ export default function Diary() {
         likes: 0,
         comments: [],
         createdAt: Date.now(),
-        authorUid: auth.currentUser.uid // 🌟 누가 썼는지 작성자 기록!
+        authorUid: auth.currentUser.uid, // 작성자 고유번호
+        authorName: auth.currentUser.displayName || "보호자", // 🌟 작성자 이름 기록
+        authorPhotoURL: auth.currentUser.photoURL || "https://via.placeholder.com/150", // 🌟 작성자 프사 기록
+        likedBy: [] // 🌟 좋아요 누른 사람 기록 배열 추가
       };
       
-      // 🌟 내 방이 아닌 타겟(메인 보호자)의 방에 피드를 올립니다!
       const docRef = await addDoc(collection(db, 'users', targetUid, 'diaries'), newFeedData);
 
-      // 3. 화면 업데이트 및 초기화
       setFeeds([{ id: docRef.id, ...newFeedData }, ...feeds]);
       setCurrentView('feed');
       setWriteForm({ previewUrls: [], files: [], year: today.getFullYear(), month: today.getMonth() + 1, day: today.getDate(), location: '', content: '' });
@@ -176,11 +183,51 @@ export default function Diary() {
       console.error("업로드 에러:", error);
       alert("일기 저장에 실패했습니다.");
     } finally {
-      setIsUploading(false); // 로딩 종료
+      setIsUploading(false); 
     }
   };
 
-const [openSelector, setOpenSelector] = useState(null);
+  const [openSelector, setOpenSelector] = useState(null);
+
+  // 🌟 [추가] 좋아요 클릭 시 실행되는 함수
+  const handleLikeToggle = async () => {
+    if (!auth.currentUser || !selectedFeed) return;
+    try {
+      const uid = auth.currentUser.uid;
+      const feedRef = doc(db, 'users', targetUid, 'diaries', selectedFeed.id);
+      
+      const isLiked = selectedFeed.likedBy?.includes(uid);
+      let newLikedBy = selectedFeed.likedBy || [];
+      let newLikes = selectedFeed.likes || 0;
+      
+      if (isLiked) {
+        newLikedBy = newLikedBy.filter(id => id !== uid);
+        newLikes = Math.max(0, newLikes - 1);
+      } else {
+        newLikedBy.push(uid);
+        newLikes += 1;
+      }
+      
+      await updateDoc(feedRef, { likes: newLikes, likedBy: newLikedBy });
+      const updatedFeed = { ...selectedFeed, likes: newLikes, likedBy: newLikedBy };
+      setSelectedFeed(updatedFeed);
+      setFeeds(feeds.map(f => f.id === selectedFeed.id ? updatedFeed : f));
+    } catch (error) {
+      console.error("좋아요 오류:", error);
+    }
+  };
+
+  // 🌟 [추가] 뷰어 동기화용 상태 및 스크롤
+  const viewerScrollRef = useRef(null);
+  const [viewerCurrentIdx, setViewerCurrentIdx] = useState(0);
+
+  useEffect(() => {
+    // 뷰어가 열리면 내가 보고 있던 번째 이미지로 스크롤을 즉시 이동시킵니다!
+    if (isViewerOpen && viewerScrollRef.current) {
+      viewerScrollRef.current.scrollLeft = viewerScrollRef.current.clientWidth * detailCurrentImgIdx;
+      setViewerCurrentIdx(detailCurrentImgIdx);
+    }
+  }, [isViewerOpen, detailCurrentImgIdx]);
 
 const renderWrite = () => {
     const currentYear = today.getFullYear();
@@ -389,10 +436,15 @@ const renderDetail = () => {
           <div className="px-4 pb-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-                 <img src={auth.currentUser?.photoURL || "https://via.placeholder.com/150"} alt="프로필" className="w-full h-full object-cover" />
+                <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden border border-gray-100">
+                 {/* 🌟 현재 유저 프사가 아닌, 저장된 '작성자'의 프사를 보여줍니다 */}
+                 <img src={selectedFeed.authorPhotoURL || "https://via.placeholder.com/150"} alt="프로필" className="w-full h-full object-cover" />
                 </div>
-                <button className="flex items-center gap-1 text-gray-600 font-medium"><Heart size={22} className="active:scale-90 transition" /><span>{selectedFeed.likes}</span></button>
+                {/* 🌟 좋아요 버튼 연결 및 하트 빨간색 채우기 로직 */}
+                <button onClick={handleLikeToggle} className="flex items-center gap-1 text-gray-600 font-medium active:scale-90 transition">
+                  <Heart size={22} className={selectedFeed.likedBy?.includes(auth.currentUser?.uid) ? 'fill-red-500 text-red-500' : ''} />
+                  <span>{selectedFeed.likes || 0}</span>
+                </button>
               </div>
               
               <div className="relative">
@@ -401,7 +453,6 @@ const renderDetail = () => {
                 </button>
                 {isMoreMenuOpen && (
                   <div className="absolute right-0 mt-2 w-28 bg-white border border-gray-100 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-[slideDown_0.2s_ease-out]">
-                    {/* 🌟 내가 쓴 글이거나, 내가 메인 보호자(방장)일 때만 수정/삭제 노출 */}
                     {(!selectedFeed.authorUid || selectedFeed.authorUid === auth.currentUser?.uid || targetUid === auth.currentUser?.uid) ? (
                       <>
                         <button onClick={() => { setIsMoreMenuOpen(false); alert("수정 기능 준비 중! 🛠️"); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium">수정하기</button>
@@ -437,20 +488,35 @@ const renderDetail = () => {
           </div>
         </div>
 
-        {/* 사진 뷰어 시작 */}
+        {/* 🌟 사진 뷰어 시작 (동기화 및 고정 다운로드 버튼 반영) */}
         {isViewerOpen && (
           <div className="fixed inset-0 z-[100] bg-black flex flex-col">
             <div className="flex justify-end p-4 z-50 absolute top-0 right-0 w-full bg-gradient-to-b from-black/50 to-transparent">
               <button onClick={() => setIsViewerOpen(false)} className="text-white p-2"><X size={28} /></button>
             </div>
             
-            <div className="flex-1 flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden items-center">
+            <div 
+              ref={viewerScrollRef}
+              onScroll={(e) => setViewerCurrentIdx(Math.round(e.target.scrollLeft / e.target.clientWidth))}
+              className="flex-1 flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden items-center"
+            >
               {selectedFeed.images.map((img, idx) => (
                 <div key={idx} className="w-full h-full flex-shrink-0 snap-center flex justify-center items-center relative">
                   <img src={img} alt={`뷰어 ${idx}`} className="max-w-full max-h-full object-contain" />
                 </div>
               ))}
             </div>
+
+            {/* 🌟 다운로드 버튼이 이미지를 따라가지 않게 밖으로 뺐습니다! */}
+            <a 
+              href={selectedFeed.images[viewerCurrentIdx]} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              download 
+              className="absolute bottom-8 right-6 bg-white/20 backdrop-blur-md p-3 rounded-full text-white hover:bg-white/40 transition z-50"
+            >
+              <Download size={24} />
+            </a>
           </div>
         )}
         {/* 사진 뷰어 끝 */}

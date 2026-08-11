@@ -16,21 +16,32 @@ export default function SettingsScreen() {
   // 🌟 [추가] 내가 메인 보호자인지 판단하는 상태
   const [isMasterMode, setIsMasterMode] = useState(true);
 
-  // 🌟 가족 구성원 전체 불러오기 (메인 + 보조 모두 포함)
+// 🌟 가족 구성원 전체 불러오기 (메인 + 보조 모두 포함)
   const fetchFamilyMembers = async () => {
     if (!auth.currentUser) return;
     setIsLoadingMembers(true);
     try {
       const myDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       
-      // 내게 masterUid가 있으면 그 사람 방, 없으면 내 방이 패밀리 기준점입니다.
       const masterUid = (myDoc.exists() && myDoc.data().masterUid) ? myDoc.data().masterUid : auth.currentUser.uid;
       const isMaster = (masterUid === auth.currentUser.uid);
       setIsMasterMode(isMaster);
 
       // 1. 메인 보호자(방장) 정보 가져오기
       const masterDoc = await getDoc(doc(db, 'users', masterUid));
-      const masterData = masterDoc.exists() ? { id: masterDoc.id, isMaster: true, ...masterDoc.data() } : null;
+      let masterData = null;
+      
+      // 🌟 [핵심] 파이어베이스에 아직 내 문서가 생성 안됐더라도 '나'를 화면에 띄우도록 수정!
+      if (masterDoc.exists()) {
+        masterData = { id: masterDoc.id, isMaster: true, ...masterDoc.data() };
+      } else if (masterUid === auth.currentUser.uid) {
+        masterData = {
+          id: auth.currentUser.uid,
+          isMaster: true,
+          displayName: auth.currentUser.displayName,
+          photoURL: auth.currentUser.photoURL
+        };
+      }
 
       // 2. 이 방에 소속된 보조 보호자들 전부 가져오기
       const q = query(collection(db, 'users'), where('masterUid', '==', masterUid));

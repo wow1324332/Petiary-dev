@@ -15,6 +15,13 @@ export default function LoginScreen() {
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
+    // 🌟 [추가] 초대 링크로 들어왔을 때 초대 코드를 안전하게 금고(localStorage)에 보관!
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get('invite');
+    if (invite) {
+      localStorage.setItem('inviteUid', invite);
+    }
+
     // 1. 현재 기기가 아이폰/아이패드인지 감지
     const userAgent = window.navigator.userAgent.toLowerCase();
     const ios = /iphone|ipad|ipod/.test(userAgent);

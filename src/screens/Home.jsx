@@ -209,6 +209,8 @@ useEffect(() => {
           const urlParams = new URLSearchParams(window.location.search);
           const inviteUid = localStorage.getItem('inviteUid') || urlParams.get('invite');
 
+          // 🌟 [핵심 변경] mySnap.exists() 검사를 빼버렸습니다! 
+          // 가입 직후 내 문서가 아직 안 만들어졌어도, setDoc은 문서를 새로 만들면서 도장을 쾅 찍어줍니다.
           if (inviteUid && inviteUid !== user.uid) {
             // 파이어베이스에 보조 보호자로 확정 도장 찍기!
             await setDoc(myRef, {

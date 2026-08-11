@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Pencil, ArrowLeft, MoreVertical, Heart, X, Download, Loader2 } from 'lucide-react';
+import { Pencil, ArrowLeft, MoreVertical, Heart, X, Download, Loader2, User } from 'lucide-react';
 // 👇 Firebase 기능 불러오기
 import { collection, addDoc, getDocs, getDoc, doc, updateDoc, query, orderBy, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -347,23 +347,25 @@ export default function Diary() {
     }
   }, [isViewerOpen, detailCurrentImgIdx]);
 
-  // 🌟 [추가] 파이어베이스 외부 이미지 강제 다운로드 함수
-  const handleImageDownload = async (imageUrl) => {
+    const handleImageDownload = async (imageUrl) => {
     try {
-      const response = await fetch(imageUrl);
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error("Proxy fetch failed");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = `petiary_photo_${Date.now()}.jpg`;
+      a.download = `Petiary_추억_${Date.now()}.jpg`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
       console.error("다운로드 에러:", error);
-      window.open(imageUrl, '_blank'); // 브라우저 이슈로 실패 시 새 창으로 띄우기
+      alert("보안 정책으로 인해 새 창에서 열립니다. 화면을 길게 눌러 [이미지 저장]을 선택해주세요!");
+      window.open(imageUrl, '_blank');
     }
   };
 

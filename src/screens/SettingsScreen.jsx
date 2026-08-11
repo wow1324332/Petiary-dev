@@ -2,64 +2,91 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
-import { collection, query, where, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { ArrowLeft, LogOut, Users, UserPlus, X, Copy, Trash2, User } from 'lucide-react';
 
 export default function SettingsScreen() {
   const navigate = useNavigate();
 
-  // 🌟 패밀리 허브용 상태
   const [isFamilyHubOpen, setIsFamilyHubOpen] = useState(false);
   const [familyMembers, setFamilyMembers] = useState([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
-
-  // 🌟 [추가] 내가 메인 보호자인지 판단하는 상태
   const [isMasterMode, setIsMasterMode] = useState(true);
 
-  // 🌟 가족 구성원 전체 불러오기 (메인 + 보조 모두 포함)
+  // 🌟 [작성자님 논리 완벽 적용] 
+  // 메인/보조 입장을 명확히 나눠서 직관적으로 가져옵니다!
   const fetchFamilyMembers = async () => {
     if (!auth.currentUser) return;
     setIsLoadingMembers(true);
     try {
       const myUid = auth.currentUser.uid;
       const myDoc = await getDoc(doc(db, 'users', myUid));
-      
-      // 1. 내가 보조라면 내 문서의 masterUid를, 메인이라면 내 UID를 마스터로 지정
-      const masterUid = (myDoc.exists() && myDoc.data().masterUid) ? myDoc.data().masterUid : myUid;
-      const isMaster = (masterUid === myUid);
-      setIsMasterMode(isMaster);
+      const myData = myDoc.exists() ? myDoc.data() : {};
 
       const membersList = [];
 
-      // 2. 메인 보호자 무조건 1빠로 추가 
-      // (메인 보호자가 프로필 저장을 안해서 DB에 문서가 없는 깡통 상태라도 목록에 무조건 띄웁니다)
-      let masterData = { 
-        id: masterUid, 
-        isMaster: true, 
-        displayName: "메인 보호자", 
-        photoURL: "" 
-      };
-      
-      const masterDoc = await getDoc(doc(db, 'users', masterUid));
-      if (masterDoc.exists()) {
-        masterData = { ...masterData, ...masterDoc.data(), id: masterUid, isMaster: true };
-      } else if (isMaster) {
-        masterData.displayName = auth.currentUser.displayName || "메인 보호자";
-        masterData.photoURL = auth.currentUser.photoURL || "";
-      }
-      membersList.push(masterData);
+      // [1. 내가 보조 보호자인 경우] : 내 정보 + 메인 보호자 정보
+      if (myData.masterUid && myData.masterUid !== myUid) {
+        setIsMasterMode(false);
+        
+        // 내 정보 먼저 넣기
+        membersList.push({
+          id: myUid,
+          isMaster: false,
+          displayName: myData.displayName || "보조 보호자",
+          photoURL: myData.photoURL || ""
+        });
 
-      // 3. 해당 메인 보호자에게 연결된 보조 보호자들 전부 검색해서 추가
-      const q = query(collection(db, 'users'), where('masterUid', '==', masterUid));
-      const snapshot = await getDocs(q);
-      
-      snapshot.forEach(d => {
-        // 메인 보호자 본인은 중복 추가 방지
-        if (d.id !== masterUid) {
-          membersList.push({ id: d.id, isMaster: false, ...d.data() });
+        // 메인 보호자(masterUid) 정보 가져오기
+        const masterDoc = await getDoc(doc(db, 'users', myData.masterUid));
+        if (masterDoc.exists()) {
+          membersList.push({
+            id: masterDoc.id,
+            isMaster: true,
+            displayName: masterDoc.data().displayName || "메인 보호자",
+            photoURL: masterDoc.data().photoURL || ""
+          });
+        } else {
+          // 혹시 메인이 DB에 없어도 이름표는 띄워줌
+          membersList.push({
+            id: myData.masterUid,
+            isMaster: true,
+            displayName: "메인 보호자",
+            photoURL: ""
+          });
         }
-      });
 
+      } 
+      // [2. 내가 메인 보호자인 경우] : 내 정보 + 나를 masterUid로 둔 보조들
+      else {
+        setIsMasterMode(true);
+        
+        // 내 정보(메인) 넣기
+        membersList.push({
+          id: myUid,
+          isMaster: true,
+          displayName: myData.displayName || "메인 보호자",
+          photoURL: myData.photoURL || ""
+        });
+
+        // 나를 마스터로 등록한 보조 보호자들 찾아서 넣기
+        const q = query(collection(db, 'users'), where('masterUid', '==', myUid));
+        const snapshot = await getDocs(q);
+        snapshot.forEach((d) => {
+          if (d.id !== myUid) {
+            membersList.push({
+              id: d.id,
+              isMaster: false,
+              displayName: d.data().displayName || "보조 보호자",
+              photoURL: d.data().photoURL || ""
+            });
+          }
+        });
+      }
+
+      // 🌟 배열 정렬: 보기 좋게 '메인 보호자'가 항상 맨 위에 오도록 설정
+      membersList.sort((a, b) => (b.isMaster === a.isMaster ? 0 : a.isMaster ? -1 : 1));
+      
       setFamilyMembers(membersList);
     } catch (error) {
       console.error("가족 불러오기 실패:", error);
@@ -68,7 +95,6 @@ export default function SettingsScreen() {
     }
   };
 
-  // 🌟 초대 링크 공유하기
   const handleInvite = async () => {
     const inviteLink = `${window.location.origin}/?invite=${auth.currentUser.uid}`;
     if (navigator.share) {
@@ -87,13 +113,17 @@ export default function SettingsScreen() {
     }
   };
 
-  // 🌟 보조 보호자 연결 끊기(삭제)
   const handleRemoveMember = async (memberId) => {
     if (!window.confirm("이 보호자와의 연결을 끊으시겠습니까?")) return;
     try {
       await updateDoc(doc(db, 'users', memberId), { masterUid: null });
       setFamilyMembers(familyMembers.filter(m => m.id !== memberId));
       alert("보호자 연결이 해제되었습니다.");
+      
+      // 보조 보호자가 스스로 나간 경우 새로고침해서 내 방으로 복귀
+      if (memberId === auth.currentUser.uid) {
+         window.location.reload();
+      }
     } catch (error) {
       alert("해제 실패: " + error.message);
     }
@@ -153,21 +183,25 @@ export default function SettingsScreen() {
           </div>
 
           <div className="flex-1 p-5 overflow-y-auto bg-gray-50">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 text-center">
-              <div className="w-12 h-12 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                <UserPlus size={24} className="text-brand" />
+            
+            {/* 메인 보호자에게만 보이는 초대 영역 */}
+            {isMasterMode && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 text-center">
+                <div className="w-12 h-12 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <UserPlus size={24} className="text-brand" />
+                </div>
+                <h3 className="font-bold text-gray-800 mb-2">공동 보호자 초대하기</h3>
+                <p className="text-sm text-gray-500 mb-5 leading-relaxed">
+                  가족이나 연인을 초대하여<br/>펫의 공간과 기록을 함께 공유하세요!
+                </p>
+                <button 
+                  onClick={handleInvite}
+                  className="w-full bg-brand text-white font-bold py-3.5 rounded-xl shadow-md active:scale-95 transition flex items-center justify-center gap-2"
+                >
+                  <Copy size={18} /> 초대 링크 복사 / 공유
+                </button>
               </div>
-              <h3 className="font-bold text-gray-800 mb-2">공동 보호자 초대하기</h3>
-              <p className="text-sm text-gray-500 mb-5 leading-relaxed">
-                가족이나 연인을 초대하여<br/>펫의 공간과 기록을 함께 공유하세요!
-              </p>
-              <button 
-                onClick={handleInvite}
-                className="w-full bg-brand text-white font-bold py-3.5 rounded-xl shadow-md active:scale-95 transition flex items-center justify-center gap-2"
-              >
-                <Copy size={18} /> 초대 링크 복사 / 공유
-              </button>
-            </div>
+            )}
 
             <h4 className="font-bold text-gray-700 mb-3 px-1">가족 구성원</h4>
             {isLoadingMembers ? (
@@ -178,7 +212,6 @@ export default function SettingsScreen() {
                   <div key={member.id} className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center gap-3">
                       
-                      {/* 🌟 원인 2 해결: 극심한 로딩 지연을 일으킨 placeholder 사이트를 제거하고, 프사가 없으면 즉시 로딩되는 기본 유저 아이콘(User) 적용 */}
                       <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
                         {member.photoURL ? (
                           <img src={member.photoURL} alt="프로필" className="w-full h-full object-cover" />
@@ -200,6 +233,7 @@ export default function SettingsScreen() {
                       </div>
                     </div>
 
+                    {/* 메인 보호자는 보조를 삭제할 수 있고, 보조 보호자는 본인만 나갈 수 있음 */}
                     {(isMasterMode && !member.isMaster) || (!isMasterMode && member.id === auth.currentUser?.uid) ? (
                       <button 
                         onClick={() => handleRemoveMember(member.id)}

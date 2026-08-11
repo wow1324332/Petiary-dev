@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
-import { ArrowLeft, LogOut, Users, UserPlus, X, Copy, Trash2, User } from 'lucide-react';
+import { ArrowLeft, LogOut, Users, UserPlus, X, Copy, Trash2, User, Unplug } from 'lucide-react';
 
 export default function SettingsScreen() {
   const navigate = useNavigate();
@@ -113,16 +113,21 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleRemoveMember = async (memberId) => {
-    if (!window.confirm("이 보호자와의 연결을 끊으시겠습니까?")) return;
+  const handleRemoveMember = async (memberId, isSelf = false) => {
+    const confirmMsg = isSelf 
+      ? "정말 메인 보호자와의 연결을 해제하시겠습니까?\n해제하면 더 이상 홈과 일기를 공유할 수 없습니다." 
+      : "이 보조 보호자를 패밀리에서 제외하시겠습니까?";
+      
+    if (!window.confirm(confirmMsg)) return;
+    
     try {
       await updateDoc(doc(db, 'users', memberId), { masterUid: null });
-      setFamilyMembers(familyMembers.filter(m => m.id !== memberId));
-      alert("보호자 연결이 해제되었습니다.");
+      alert(isSelf ? "연결이 해제되었습니다. 내 방으로 돌아갑니다." : "보호자가 제외되었습니다.");
       
-      // 보조 보호자가 스스로 나간 경우 새로고침해서 내 방으로 복귀
-      if (memberId === auth.currentUser.uid) {
-         window.location.reload();
+      if (isSelf) {
+        window.location.reload();
+      } else {
+        setFamilyMembers(familyMembers.filter(m => m.id !== memberId));
       }
     } catch (error) {
       alert("해제 실패: " + error.message);
@@ -233,17 +238,32 @@ export default function SettingsScreen() {
                       </div>
                     </div>
 
-                    {/* 메인 보호자는 보조를 삭제할 수 있고, 보조 보호자는 본인만 나갈 수 있음 */}
-                    {(isMasterMode && !member.isMaster) || (!isMasterMode && member.id === auth.currentUser?.uid) ? (
+                    {/* 🌟 1. 쓰레기통 아이콘은 메인 보호자가 남(보조)을 지울 때만 보입니다 */}
+                    {isMasterMode && !member.isMaster && (
                       <button 
-                        onClick={() => handleRemoveMember(member.id)}
+                        onClick={() => handleRemoveMember(member.id, false)}
                         className="p-2 text-gray-400 hover:text-red-500 transition active:scale-95 bg-gray-50 rounded-full"
                       >
                         <Trash2 size={18} />
                       </button>
-                    ) : null}
+                    )}
                   </div>
                 ))}
+
+                {/* 🌟 2. 보조 보호자 전용: 하단에 큼직한 '연결 해제' 버튼 제공 */}
+                {!isMasterMode && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <button 
+                      onClick={() => handleRemoveMember(auth.currentUser.uid, true)}
+                      className="w-full bg-white border border-red-200 text-red-500 font-bold py-3.5 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-2 hover:bg-red-50"
+                    >
+                      <Unplug size={18} /> 메인 보호자와 연결 해제
+                    </button>
+                    <p className="text-center text-xs text-gray-400 mt-3">
+                      연결을 해제하면 내 방으로 돌아가며,<br/>이전 기록은 공유되지 않습니다.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -347,6 +347,26 @@ export default function Diary() {
     }
   }, [isViewerOpen, detailCurrentImgIdx]);
 
+  // 🌟 [추가] 파이어베이스 외부 이미지 강제 다운로드 함수
+  const handleImageDownload = async (imageUrl) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `petiary_photo_${Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("다운로드 에러:", error);
+      window.open(imageUrl, '_blank'); // 브라우저 이슈로 실패 시 새 창으로 띄우기
+    }
+  };
+
   const handleDeleteClick = () => {
     setIsMoreMenuOpen(false); // 더보기 메뉴는 닫고
     setIsDeletePopupOpen(true); // 팝업 띄우기!
@@ -436,8 +456,13 @@ const renderDetail = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden border border-gray-100">
-                 {/* 🌟 현재 유저 프사가 아닌, 저장된 '작성자'의 프사를 보여줍니다 */}
-                 <img src={selectedFeed.authorPhotoURL || "https://via.placeholder.com/150"} alt="프로필" className="w-full h-full object-cover" />
+                 {/* 🌟 깨진 이미지 방지를 위해 onError 추가 및 대체 이미지 적용 */}
+                 <img 
+                   src={selectedFeed.authorPhotoURL || "https://via.placeholder.com/150"} 
+                   onError={(e) => e.target.src = "https://via.placeholder.com/150"}
+                   alt="프로필" 
+                   className="w-full h-full object-cover" 
+                 />
                 </div>
                 {/* 🌟 좋아요 버튼 연결 및 하트 빨간색 채우기 로직 */}
                 <button onClick={handleLikeToggle} className="flex items-center gap-1 text-gray-600 font-medium active:scale-90 transition">
@@ -507,15 +532,12 @@ const renderDetail = () => {
             </div>
 
             {/* 🌟 다운로드 버튼이 이미지를 따라가지 않게 밖으로 뺐습니다! */}
-            <a 
-              href={selectedFeed.images[viewerCurrentIdx]} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              download 
+            <button 
+              onClick={() => handleImageDownload(selectedFeed.images[viewerCurrentIdx])} 
               className="absolute bottom-8 right-6 bg-white/20 backdrop-blur-md p-3 rounded-full text-white hover:bg-white/40 transition z-50"
             >
               <Download size={24} />
-            </a>
+            </button>
           </div>
         )}
         {/* 사진 뷰어 끝 */}

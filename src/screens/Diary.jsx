@@ -217,19 +217,7 @@ export default function Diary() {
     }
   };
 
-  // 🌟 [추가] 뷰어 동기화용 상태 및 스크롤
-  const viewerScrollRef = useRef(null);
-  const [viewerCurrentIdx, setViewerCurrentIdx] = useState(0);
-
-  useEffect(() => {
-    // 뷰어가 열리면 내가 보고 있던 번째 이미지로 스크롤을 즉시 이동시킵니다!
-    if (isViewerOpen && viewerScrollRef.current) {
-      viewerScrollRef.current.scrollLeft = viewerScrollRef.current.clientWidth * detailCurrentImgIdx;
-      setViewerCurrentIdx(detailCurrentImgIdx);
-    }
-  }, [isViewerOpen, detailCurrentImgIdx]);
-
-const renderWrite = () => {
+    const renderWrite = () => {
     const currentYear = today.getFullYear();
     const years = Array.from({length: currentYear - 1950 + 1}, (_, i) => currentYear - i);
     const months = Array.from({length: 12}, (_, i) => i + 1);
@@ -347,6 +335,17 @@ const renderWrite = () => {
   const [commentInput, setCommentInput] = useState('');
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
+
+  // 🌟 [해결] 변수들이 선언된 이후인 이 위치에 있어야 에러가 나지 않고 흰 화면이 사라집니다!
+  const viewerScrollRef = useRef(null);
+  const [viewerCurrentIdx, setViewerCurrentIdx] = useState(0);
+
+  useEffect(() => {
+    if (isViewerOpen && viewerScrollRef.current) {
+      viewerScrollRef.current.scrollLeft = viewerScrollRef.current.clientWidth * detailCurrentImgIdx;
+      setViewerCurrentIdx(detailCurrentImgIdx);
+    }
+  }, [isViewerOpen, detailCurrentImgIdx]);
 
   const handleDeleteClick = () => {
     setIsMoreMenuOpen(false); // 더보기 메뉴는 닫고

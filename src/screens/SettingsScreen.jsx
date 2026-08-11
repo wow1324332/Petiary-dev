@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { collection, query, where, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { ArrowLeft, LogOut, Users, UserPlus, X, Copy, Trash2 } from 'lucide-react';
+import { ArrowLeft, LogOut, Users, UserPlus, X, Copy, Trash2, User } from 'lucide-react';
 
 export default function SettingsScreen() {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ export default function SettingsScreen() {
   // 🌟 [추가] 내가 메인 보호자인지 판단하는 상태
   const [isMasterMode, setIsMasterMode] = useState(true);
 
-// 🌟 가족 구성원 전체 불러오기 (메인 + 보조 모두 포함)
+  // 🌟 가족 구성원 전체 불러오기 (메인 + 보조 모두 포함)
   const fetchFamilyMembers = async () => {
     if (!auth.currentUser) return;
     setIsLoadingMembers(true);
@@ -27,35 +27,41 @@ export default function SettingsScreen() {
       const isMaster = (masterUid === auth.currentUser.uid);
       setIsMasterMode(isMaster);
 
-      // 1. 메인 보호자(방장) 정보 가져오기
+      // 1. 방장 정보 무조건 기본 생성 (에러 나서 증발하는 것 방지!)
+      let masterData = { 
+        id: masterUid, 
+        isMaster: true, 
+        displayName: "메인 보호자", 
+        photoURL: "" 
+      };
+
       const masterDoc = await getDoc(doc(db, 'users', masterUid));
-      let masterData = null;
-      
-      // 🌟 [핵심] 파이어베이스에 아직 내 문서가 생성 안됐더라도 '나'를 화면에 띄우도록 수정!
       if (masterDoc.exists()) {
-        masterData = { id: masterDoc.id, isMaster: true, ...masterDoc.data() };
+        masterData = { ...masterData, ...masterDoc.data(), id: masterUid, isMaster: true };
       } else if (masterUid === auth.currentUser.uid) {
-        masterData = {
-          id: auth.currentUser.uid,
-          isMaster: true,
-          displayName: auth.currentUser.displayName,
-          photoURL: auth.currentUser.photoURL
-        };
+        masterData.displayName = auth.currentUser.displayName || "메인 보호자";
+        masterData.photoURL = auth.currentUser.photoURL || "";
       }
 
-      // 2. 이 방에 소속된 보조 보호자들 전부 가져오기
+      // 2. 보조 보호자들 전부 가져오기
       const q = query(collection(db, 'users'), where('masterUid', '==', masterUid));
       const snapshot = await getDocs(q);
-      const subMembers = snapshot.docs.map(d => ({ id: d.id, isMaster: false, ...d.data() }));
+      const subMembers = [];
+      snapshot.forEach(d => {
+        if (d.id !== masterUid) subMembers.push({ id: d.id, isMaster: false, ...d.data() });
+      });
 
       // 메인 + 보조 합쳐서 목록 만들기
-      const allMembers = [];
-      if (masterData) allMembers.push(masterData);
-      allMembers.push(...subMembers);
-
-      setFamilyMembers(allMembers);
+      setFamilyMembers([masterData, ...subMembers]);
     } catch (error) {
       console.error("가족 불러오기 실패:", error);
+      // 에러가 나도 '나'는 무조건 띄워주기!
+      setFamilyMembers([{
+        id: auth.currentUser.uid,
+        isMaster: true,
+        displayName: auth.currentUser.displayName || "보호자",
+        photoURL: auth.currentUser.photoURL || ""
+      }]);
     } finally {
       setIsLoadingMembers(false);
     }
@@ -64,8 +70,6 @@ export default function SettingsScreen() {
   // 🌟 초대 링크 공유하기
   const handleInvite = async () => {
     const inviteLink = `${window.location.origin}/?invite=${auth.currentUser.uid}`;
-    
-    // 스마트폰의 기본 공유 기능(카톡, 메시지 등) 띄우기
     if (navigator.share) {
       try {
         await navigator.share({
@@ -77,7 +81,6 @@ export default function SettingsScreen() {
         console.log("공유 취소됨");
       }
     } else {
-      // PC 등 공유 기능이 지원 안 되면 클립보드에 복사
       navigator.clipboard.writeText(inviteLink);
       alert("초대 링크가 복사되었습니다! 카카오톡이나 메일로 붙여넣기 해서 초대하세요. 🐾");
     }
@@ -87,7 +90,6 @@ export default function SettingsScreen() {
   const handleRemoveMember = async (memberId) => {
     if (!window.confirm("이 보호자와의 연결을 끊으시겠습니까?")) return;
     try {
-      // 해당 유저의 정보에서 masterUid를 지워서 독립시킴
       await updateDoc(doc(db, 'users', memberId), { masterUid: null });
       setFamilyMembers(familyMembers.filter(m => m.id !== memberId));
       alert("보호자 연결이 해제되었습니다.");
@@ -95,13 +97,12 @@ export default function SettingsScreen() {
       alert("해제 실패: " + error.message);
     }
   };
- 
+  
   const handleLogout = async () => {
     const confirmLogout = window.confirm("정말 로그아웃 하시겠습니까?");
     if (confirmLogout) {
       try {
         await signOut(auth);
-        // 로그아웃 성공 시 App.jsx가 감지하여 자동으로 로그인 화면으로 이동합니다.
       } catch (error) {
         alert("로그아웃 중 오류가 발생했습니다.");
       }
@@ -110,7 +111,6 @@ export default function SettingsScreen() {
 
   return (
     <div className="flex flex-col h-full bg-bglight">
-      {/* 상단 헤더 (뒤로가기 버튼) */}
       <div className="flex items-center p-5 sticky top-0 bg-bglight z-10">
         <button onClick={() => navigate(-1)} className="p-2 -ml-2 mr-2 active:scale-95 transition">
           <ArrowLeft size={24} className="text-gray-800" />
@@ -118,14 +118,11 @@ export default function SettingsScreen() {
         <h2 className="text-xl font-bold text-gray-800">설정</h2>
       </div>
       
-      {/* 설정 메뉴 리스트 */}
       <div className="p-5 flex flex-col gap-3">
-        
-        {/* 🌟 패밀리 허브 버튼 */}
         <button 
           onClick={() => {
             setIsFamilyHubOpen(true);
-            fetchFamilyMembers(); // 모달 열릴 때 가족 목록 불러오기
+            fetchFamilyMembers();
           }}
           className="w-full flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-gray-100 active:scale-95 transition"
         >
@@ -143,10 +140,9 @@ export default function SettingsScreen() {
             <LogOut size={20} className="mr-3" />
             로그아웃
           </div>
-</button>
+        </button>
       </div>
 
-      {/* 🌟 패밀리 허브 모달 오버레이 */}
       {isFamilyHubOpen && (
         <div className="absolute inset-0 bg-white z-50 flex flex-col animate-[slideInRight_0.3s_ease-out]">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -156,7 +152,6 @@ export default function SettingsScreen() {
           </div>
 
           <div className="flex-1 p-5 overflow-y-auto bg-gray-50">
-            {/* 초대 버튼 영역 */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 text-center">
               <div className="w-12 h-12 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-3">
                 <UserPlus size={24} className="text-brand" />
@@ -173,7 +168,6 @@ export default function SettingsScreen() {
               </button>
             </div>
 
-            {/* 🌟 가족 구성원 목록 */}
             <h4 className="font-bold text-gray-700 mb-3 px-1">가족 구성원</h4>
             {isLoadingMembers ? (
               <p className="text-center text-gray-400 py-10 text-sm">불러오는 중...</p>
@@ -182,14 +176,21 @@ export default function SettingsScreen() {
                 {familyMembers.map((member) => (
                   <div key={member.id} className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-100">
-                        <img src={member.photoURL || "https://via.placeholder.com/150"} alt="프로필" className="w-full h-full object-cover" />
+                      
+                      {/* 🌟 원인 2 해결: 극심한 로딩 지연을 일으킨 placeholder 사이트를 제거하고, 프사가 없으면 즉시 로딩되는 기본 유저 아이콘(User) 적용 */}
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
+                        {member.photoURL ? (
+                          <img src={member.photoURL} alt="프로필" className="w-full h-full object-cover" />
+                        ) : (
+                          <User size={20} className="text-gray-400" />
+                        )}
                       </div>
+
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-bold text-gray-800 text-sm">
                             {member.displayName || "이름 없음"} 
-                            {member.id === auth.currentUser.uid && <span className="text-xs text-gray-400 font-normal ml-1">(나)</span>}
+                            {member.id === auth.currentUser?.uid && <span className="text-xs text-gray-400 font-normal ml-1">(나)</span>}
                           </p>
                         </div>
                         <p className={`text-xs font-medium ${member.isMaster ? 'text-brand' : 'text-blue-500'}`}>
@@ -198,8 +199,7 @@ export default function SettingsScreen() {
                       </div>
                     </div>
 
-                    {/* 🌟 메인 보호자는 남을 강퇴할 수 있고, 보조 보호자는 스스로 나갈 수 있습니다 */}
-                    {(isMasterMode && !member.isMaster) || (!isMasterMode && member.id === auth.currentUser.uid) ? (
+                    {(isMasterMode && !member.isMaster) || (!isMasterMode && member.id === auth.currentUser?.uid) ? (
                       <button 
                         onClick={() => handleRemoveMember(member.id)}
                         className="p-2 text-gray-400 hover:text-red-500 transition active:scale-95 bg-gray-50 rounded-full"
@@ -214,7 +214,6 @@ export default function SettingsScreen() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

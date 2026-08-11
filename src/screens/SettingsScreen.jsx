@@ -21,47 +21,48 @@ export default function SettingsScreen() {
     if (!auth.currentUser) return;
     setIsLoadingMembers(true);
     try {
-      const myDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      const myUid = auth.currentUser.uid;
+      const myDoc = await getDoc(doc(db, 'users', myUid));
       
-      const masterUid = (myDoc.exists() && myDoc.data().masterUid) ? myDoc.data().masterUid : auth.currentUser.uid;
-      const isMaster = (masterUid === auth.currentUser.uid);
+      // 1. 내가 보조라면 내 문서의 masterUid를, 메인이라면 내 UID를 마스터로 지정
+      const masterUid = (myDoc.exists() && myDoc.data().masterUid) ? myDoc.data().masterUid : myUid;
+      const isMaster = (masterUid === myUid);
       setIsMasterMode(isMaster);
 
-      // 1. 방장 정보 무조건 기본 생성 (에러 나서 증발하는 것 방지!)
+      const membersList = [];
+
+      // 2. 메인 보호자 무조건 1빠로 추가 
+      // (메인 보호자가 프로필 저장을 안해서 DB에 문서가 없는 깡통 상태라도 목록에 무조건 띄웁니다)
       let masterData = { 
         id: masterUid, 
         isMaster: true, 
         displayName: "메인 보호자", 
         photoURL: "" 
       };
-
+      
       const masterDoc = await getDoc(doc(db, 'users', masterUid));
       if (masterDoc.exists()) {
         masterData = { ...masterData, ...masterDoc.data(), id: masterUid, isMaster: true };
-      } else if (masterUid === auth.currentUser.uid) {
+      } else if (isMaster) {
         masterData.displayName = auth.currentUser.displayName || "메인 보호자";
         masterData.photoURL = auth.currentUser.photoURL || "";
       }
+      membersList.push(masterData);
 
-      // 2. 보조 보호자들 전부 가져오기
+      // 3. 해당 메인 보호자에게 연결된 보조 보호자들 전부 검색해서 추가
       const q = query(collection(db, 'users'), where('masterUid', '==', masterUid));
       const snapshot = await getDocs(q);
-      const subMembers = [];
+      
       snapshot.forEach(d => {
-        if (d.id !== masterUid) subMembers.push({ id: d.id, isMaster: false, ...d.data() });
+        // 메인 보호자 본인은 중복 추가 방지
+        if (d.id !== masterUid) {
+          membersList.push({ id: d.id, isMaster: false, ...d.data() });
+        }
       });
 
-      // 메인 + 보조 합쳐서 목록 만들기
-      setFamilyMembers([masterData, ...subMembers]);
+      setFamilyMembers(membersList);
     } catch (error) {
       console.error("가족 불러오기 실패:", error);
-      // 에러가 나도 '나'는 무조건 띄워주기!
-      setFamilyMembers([{
-        id: auth.currentUser.uid,
-        isMaster: true,
-        displayName: auth.currentUser.displayName || "보호자",
-        photoURL: auth.currentUser.photoURL || ""
-      }]);
     } finally {
       setIsLoadingMembers(false);
     }
